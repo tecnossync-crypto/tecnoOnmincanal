@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────
+# .gitignore — Tecnossync Omnichannel
+# ─────────────────────────────────────────────────────────────
+
+# ── Variables de entorno — NUNCA subir ──────────────────────
+.env
+.env.*
+*.env
+!.env.example
+
+# ── Node modules ─────────────────────────────────────────────
+node_modules/
+*/node_modules/
+
+# ── Sesiones de WhatsApp (datos privados de Baileys) ────────
+backend/sessions/
+sessions/
+
+# ── Uploads (archivos de usuarios) ──────────────────────────
+backend/uploads/
+uploads/
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+backend/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Build / dist ─────────────────────────────────────────────
+dist/
+build/
+frontend/dist/
+
+# ── Docker volumes ───────────────────────────────────────────
+postgres_data/
+redis_data/
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo

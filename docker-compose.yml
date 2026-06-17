@@ -1,0 +1,120 @@
+# docker-compose.yml
+# Orquesta todos los servicios: PostgreSQL, Redis, Backend y Frontend
+# Uso: docker-compose up --build
+
+version: '3.9'
+
+services:
+
+  # ============================
+  # BASE DE DATOS PostgreSQL
+  # ============================
+  postgres:
+    image: postgres:16-alpine
+    container_name: omnichannel_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: omnichannel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"        # Acceso local para herramientas como DBeaver
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - omnichannel_net
+
+  # ============================
+  # REDIS (caché + cola Bull)
+  # ============================
+  redis:
+    image: redis:7-alpine
+    container_name: omnichannel_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - omnichannel_net
+
+  # ============================
+  # BACKEND Node.js
+  # ============================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: omnichannel_backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      # Sobreescribir hosts para Docker
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/logs:/app/logs          # Logs
+      - wa_sessions:/app/sessions         # Credenciales Baileys (QR solo una vez)
+      - uploads_data:/app/uploads         # Archivos subidos (catálogos, media, vouchers)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omnichannel_net
+
+  # ============================
+  # FRONTEND React + Nginx
+  # ============================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: omnichannel_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - omnichannel_net
+
+# ============================
+# VOLÚMENES PERSISTENTES
+# ============================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  wa_sessions:
+    driver: local
+  uploads_data:
+    driver: local
+
+# ============================
+# RED INTERNA
+# ============================
+networks:
+  omnichannel_net:
+    driver: bridge

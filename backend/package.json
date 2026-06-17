@@ -1,0 +1,49 @@
+{
+  "name": "omnichannel-backend",
+  "version": "1.0.0",
+  "description": "Plataforma Omnicanal con Chatbot IA - Backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "migrate": "node src/models/migrate.js",
+    "seed": "node src/models/seed.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@google/generative-ai": "^0.24.1",
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc11",
+    "axios": "^1.6.0",
+    "bcryptjs": "^2.4.3",
+    "bull": "^4.12.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "docxtemplater": "^3.68.7",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.12.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^6.38.0",
+    "pdf-parse": "^1.1.4",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "pino": "^10.3.1",
+    "pizzip": "^3.2.0",
+    "qrcode": "^1.5.4",
+    "sequelize": "^6.35.2",
+    "socket.io": "^4.8.3",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

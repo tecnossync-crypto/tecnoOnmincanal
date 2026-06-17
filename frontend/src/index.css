@@ -1,0 +1,231 @@
+/* frontend/src/index.css */
+/* ─────────────────────────────────────────────────────────────
+   Tecnossync — Estilos globales + animaciones de marca
+   ───────────────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base ─────────────────────────────────────────────────── */
+@layer base {
+  body { @apply text-gray-900 antialiased dark:text-slate-100 dark:bg-slate-950; }
+  * { box-sizing: border-box; }
+}
+
+/* Transición suave al cambiar entre modo claro / oscuro */
+html, body, #root {
+  color-scheme: light;
+}
+html.dark, html.dark body, html.dark #root {
+  color-scheme: dark;
+}
+html * {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+/* Variables de color del Dashboard — usa estilos inline, se adapta vía estas vars */
+:root {
+  --db-bg: #f8fafc;
+  --db-text: #334155;
+  --db-text-strong: #0f172a;
+  --db-text-muted: #94a3b8;
+  --db-text-subtle: #64748b;
+  --db-text-faint: #94a3b8;
+  --db-card-bg: #ffffff;
+  --db-card-border: #e2e8f0;
+  --db-row-border: #f1f5f9;
+  --db-pill-bg: #f1f5f9;
+  --db-pill-border: #e2e8f0;
+  --db-track-bg: #e2e8f0;
+  --db-error-bg: #fef2f2;
+  --db-error-border: #fecaca;
+  --db-error-text: #dc2626;
+  --db-skeleton-bg: #e2e8f0;
+}
+html.dark {
+  --db-bg: #0f172a;
+  --db-text: #e2e8f0;
+  --db-text-strong: #ffffff;
+  --db-text-muted: #64748b;
+  --db-text-subtle: #94a3b8;
+  --db-text-faint: #475569;
+  --db-card-bg: rgba(255,255,255,0.03);
+  --db-card-border: rgba(255,255,255,0.07);
+  --db-row-border: rgba(255,255,255,0.04);
+  --db-pill-bg: rgba(255,255,255,0.05);
+  --db-pill-border: rgba(255,255,255,0.1);
+  --db-track-bg: rgba(255,255,255,0.05);
+  --db-error-bg: rgba(239,68,68,0.1);
+  --db-error-border: rgba(239,68,68,0.3);
+  --db-error-text: #f87171;
+  --db-skeleton-bg: rgba(255,255,255,0.04);
+}
+
+/* ─── Componentes reutilizables ─────────────────────────────── */
+@layer components {
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg
+           transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg
+           transition-colors duration-150;
+  }
+  .btn-danger {
+    @apply bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 px-4 rounded-lg
+           transition-colors duration-150;
+  }
+  .input-field {
+    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
+  }
+  /* Badge de canal */
+  .badge-whatsapp  { @apply bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+  .badge-messenger { @apply bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+  .badge-instagram { @apply bg-pink-100 text-pink-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+  /* Badge de rol */
+  .badge-admin { @apply bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+  .badge-agent { @apply bg-slate-100 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded-full; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ANIMACIONES DE MARCA — Tecnossync
+   ───────────────────────────────────────────────────────────── */
+
+/* Entrada con fade + slide suave */
+@keyframes ts-brand-in {
+  0%   { opacity: 0; transform: translateX(-12px); }
+  60%  { opacity: 1; transform: translateX(2px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Gradiente animado para el texto del logo */
+@keyframes ts-gradient-shift {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+/* Pulso del punto/dot de "online" */
+@keyframes ts-pulse-ring {
+  0%   { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+  70%  { transform: scale(1);   box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);  }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);   }
+}
+
+/* Línea de brillo que cruza el logo */
+@keyframes ts-shimmer {
+  0%   { left: -60%; }
+  100% { left: 150%;  }
+}
+
+/* ── Clase aplicada al nombre de marca en el sidebar ─────── */
+.ts-brand-name {
+  animation: ts-brand-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 40%, #06b6d4 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation:
+    ts-brand-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    ts-gradient-shift 5s ease infinite 0.6s;
+}
+
+/* ── Logo container con efecto shimmer ───────────────────── */
+.ts-logo-container {
+  position: relative;
+  overflow: hidden;
+}
+.ts-logo-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  animation: ts-shimmer 3s ease-in-out 1s infinite;
+}
+
+/* ── Indicador de estado online ─────────────────────────── */
+.ts-online-dot {
+  animation: ts-pulse-ring 2s ease-out infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LOGIN PAGE — animación de entrada de la tarjeta
+   ───────────────────────────────────────────────────────────── */
+@keyframes ts-card-in {
+  0%   { opacity: 0; transform: translateY(24px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+.ts-login-card {
+  animation: ts-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Título de login con gradiente */
+.ts-login-title {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #0891b2 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: ts-gradient-shift 6s ease infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CHAT WINDOW — animaciones de mensajes
+   ───────────────────────────────────────────────────────────── */
+@keyframes msg-in-right {
+  from { opacity: 0; transform: translateX(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0)   scale(1);    }
+}
+@keyframes msg-in-left {
+  from { opacity: 0; transform: translateX(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0)    scale(1);    }
+}
+.msg-agent  { animation: msg-in-right 0.2s ease-out; }
+.msg-contact{ animation: msg-in-left  0.2s ease-out; }
+
+/* ─────────────────────────────────────────────────────────────
+   INDICADOR DE ESCRIBIENDO
+   ───────────────────────────────────────────────────────────── */
+@keyframes bounce-dot {
+  0%, 80%, 100% { transform: scale(0); }
+  40%           { transform: scale(1); }
+}
+.typing-dot {
+  animation: bounce-dot 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+/* ─────────────────────────────────────────────────────────────
+   SCROLLBAR
+   ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: #a5b4fc; }
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE HELPERS
+   ───────────────────────────────────────────────────────────── */
+/* Sidebar colapsada en móvil — solo iconos */
+@media (max-width: 768px) {
+  .ts-sidebar-label { display: none; }
+  .ts-sidebar-wide  { width: 3.5rem !important; }
+  .ts-main-content  { margin-left: 3.5rem; }
+}

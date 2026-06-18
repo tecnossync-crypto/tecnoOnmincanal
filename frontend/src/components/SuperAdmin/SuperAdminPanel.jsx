@@ -1,6 +1,7 @@
 // frontend/src/components/SuperAdmin/SuperAdminPanel.jsx
 // Panel exclusivo del SuperAdministrador para gestionar empresas y sus feature flags
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -55,6 +56,7 @@ function FeatureToggle({ featureKey, label, desc, value, onChange, disabled }) {
 
 // ── Panel principal ──────────────────────────────────────────────────────────
 export default function SuperAdminPanel() {
+  const navigate = useNavigate();
   const [companies, setCompanies]   = useState([]);
   const [selected, setSelected]     = useState(null);   // empresa seleccionada
   const [features, setFeatures]     = useState({});     // features editables
@@ -149,6 +151,15 @@ export default function SuperAdminPanel() {
             <span className="text-xs text-slate-500">{companies.length} empresa{companies.length !== 1 ? 's' : ''}</span>
           </div>
           <p className="text-xs text-slate-500">Gestión global de empresas y módulos</p>
+          <button
+            onClick={() => navigate('/gestion-funcionalidades')}
+            className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors border border-indigo-500/30"
+          >
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+            </svg>
+            Gestión de Funcionalidades
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5">

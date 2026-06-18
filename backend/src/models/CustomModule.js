@@ -14,6 +14,7 @@ const CustomModule = sequelize.define('CustomModule', {
   daily_limit:   { type: DataTypes.INTEGER, defaultValue: 0 }, // 0 = sin límite
   is_active:     { type: DataTypes.BOOLEAN, defaultValue: true },
   sort_order:    { type: DataTypes.INTEGER, defaultValue: 0 },
+  company_id:    { type: DataTypes.UUID, allowNull: true },
 }, {
   tableName:  'custom_modules',
   timestamps: true,

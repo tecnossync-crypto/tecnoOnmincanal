@@ -62,32 +62,36 @@ const create = async (req, res) => {
 
     let record;
     try {
+      const companyId = req.user?.role === 'superadmin' ? null : req.user?.company_id;
       record = await ModuleRecord.create({
         module_id:       Number(module_id),
         contact_name:    contact_name?.trim() || null,
         contact_jid:     contact_jid  || null,
         session_id:      session_id   || null,
-        conversation_id: conversation_id ? Number(conversation_id) : null,
+        conversation_id: conversation_id || null,
         data:            data || {},
         status:          'pending',
         notes:           notes?.trim() || null,
-        created_by:      req.user?.id || null
+        created_by:      req.user?.id || null,
+        company_id:      companyId
       });
     } catch (createErr) {
       // Si la tabla no existe (p.ej. contenedor antiguo), crearla y reintentar
       const msg = createErr.original?.message || createErr.message || '';
       if (msg.includes('does not exist') || msg.includes('no existe') || createErr.name === 'SequelizeDatabaseError') {
         await ModuleRecord.sync({ force: false });
+        const companyId = req.user?.role === 'superadmin' ? null : req.user?.company_id;
         record = await ModuleRecord.create({
           module_id:       Number(module_id),
           contact_name:    contact_name?.trim() || null,
           contact_jid:     contact_jid  || null,
           session_id:      session_id   || null,
-          conversation_id: conversation_id ? Number(conversation_id) : null,
+          conversation_id: conversation_id || null,
           data:            data || {},
           status:          'pending',
           notes:           notes?.trim() || null,
-          created_by:      req.user?.id || null
+          created_by:      req.user?.id || null,
+          company_id:      companyId
         });
       } else {
         throw createErr;

@@ -306,7 +306,6 @@ export { ModuleIcon };
 
 export default function ModulosConfig() {
   const navigate = useNavigate();
-  const { fetchModules } = useModuleStore();
   const [items,     setItems]     = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -314,6 +313,11 @@ export default function ModulosConfig() {
   const [saving,    setSaving]    = useState(false);
   const [deleting,  setDeleting]  = useState(null);
   const [expanded,  setExpanded]  = useState(null);
+
+  const syncSidebar = (updater) => {
+    const { modules, setModules } = useModuleStore.getState();
+    setModules(typeof updater === 'function' ? updater(modules) : updater);
+  };
 
   const load = async () => {
     try {
@@ -334,13 +338,14 @@ export default function ModulosConfig() {
       if (editing?.id) {
         const res = await api.put(`/custom-modules/${editing.id}`, form);
         setItems(p => p.map(i => i.id === editing.id ? res.data : i));
+        syncSidebar(prev => prev.map(m => m.id === editing.id ? res.data : m));
         toast.success('Módulo actualizado');
       } else {
         const res = await api.post('/custom-modules', form);
         setItems(p => [...p, res.data]);
+        syncSidebar(prev => [...prev, res.data]);
         toast.success('Módulo creado');
       }
-      fetchModules();
       setModalOpen(false); setEditing(null);
     } catch (err) { toast.error(err.message || 'Error al guardar'); }
     finally { setSaving(false); }
@@ -352,7 +357,7 @@ export default function ModulosConfig() {
       setDeleting(id);
       await api.delete(`/custom-modules/${id}`);
       setItems(p => p.filter(i => i.id !== id));
-      fetchModules();
+      syncSidebar(prev => prev.filter(m => m.id !== id));
       toast.success('Módulo eliminado');
     } catch { toast.error('Error al eliminar'); }
     finally { setDeleting(null); }

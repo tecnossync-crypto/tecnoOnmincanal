@@ -25,6 +25,7 @@ import ModuleView             from './components/Modules/ModuleView';
 import CalendarPanel          from './components/Calendar/CalendarPanel';
 import TemplatesPanel         from './components/Templates/TemplatesPanel';
 import SuperAdminPanel        from './components/SuperAdmin/SuperAdminPanel';
+import GestionFuncionalidades from './components/SuperAdmin/GestionFuncionalidades';
 import MergeTemplatesPanel    from './components/MergeTemplates/MergeTemplatesPanel';
 
 
@@ -54,6 +55,13 @@ const SuperAdminRoute = ({ children }) => {
   return children;
 };
 
+const FeatureRoute = ({ feature, children }) => {
+  const { user, hasFeature } = useAuthStore();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!hasFeature(feature)) return <Navigate to="/config" replace />;
+  return children;
+};
+
 export default function App() {
   const { token, fetchMe } = useAuthStore();
   useEffect(() => { if (token) fetchMe(); }, []);
@@ -78,48 +86,44 @@ export default function App() {
         <Route path="templates"  element={<RoleRoute role="admin"><TemplatesPanel /></RoleRoute>} />
         <Route path="merge-templates" element={<MergeTemplatesPanel />} />
 
-         {/* ── Configuraciónn ── */}
+         {/* ── Configuración ── */}
 
-        <Route path="config"     element={<Settings />} />
+        <Route path="config" element={<Settings />} />
 
          {/* ── General ── */}
-
-        <Route path="config/perfilEmpresa"  element={<PerfilEmpresa />} />
-        <Route path="config/configPerfiles" element={<Placeholder name="Perfiles" />} />
-        <Route path="config/departamentos"  element={<Placeholder name="Departamentos" />} />
-        <Route path="config/upload"         element={<Placeholder name="Importar" />} />
-        <Route path="config/etiquetas"      element={<EtiquetasConfig />} />
-        <Route path="config/panel-info"     element={<PanelInfoConfig />} />
+        <Route path="config/perfilEmpresa"  element={<FeatureRoute feature="config_company_profile"><PerfilEmpresa /></FeatureRoute>} />
+        <Route path="config/upload"         element={<FeatureRoute feature="config_import_contacts"><Placeholder name="Importar" /></FeatureRoute>} />
+        <Route path="config/etiquetas"      element={<FeatureRoute feature="labels"><EtiquetasConfig /></FeatureRoute>} />
+        <Route path="config/panel-info"     element={<FeatureRoute feature="config_info_panel"><PanelInfoConfig /></FeatureRoute>} />
 
          {/* Canales */}
-
-        <Route path="config/whatsapp" element={<RoleRoute role="admin"><WhatsappConfig /></RoleRoute>} />
-        <Route path="config/messenger" element={<Placeholder name="Messenger" />} />
-        <Route path="config/instagram" element={<Placeholder name="Instagram" />} />
-        <Route path="config/tiktok"    element={<Placeholder name="TikTok" />} />
-        <Route path="config/telegram"  element={<Placeholder name="Telegram" />} />
+        <Route path="config/whatsapp"  element={<RoleRoute role="admin"><FeatureRoute feature="whatsapp_business"><WhatsappConfig /></FeatureRoute></RoleRoute>} />
+        <Route path="config/messenger" element={<FeatureRoute feature="config_messenger"><Placeholder name="Messenger" /></FeatureRoute>} />
+        <Route path="config/instagram" element={<FeatureRoute feature="config_instagram"><Placeholder name="Instagram" /></FeatureRoute>} />
+        <Route path="config/tiktok"    element={<FeatureRoute feature="config_tiktok"><Placeholder name="TikTok" /></FeatureRoute>} />
+        <Route path="config/telegram"  element={<FeatureRoute feature="config_telegram"><Placeholder name="Telegram" /></FeatureRoute>} />
 
          {/* Bot */}
-          <Route path="config/bot-respuesta"  element={<Placeholder name="Bot de Respuesta" />} />
-          <Route path="config/flow-rules"     element={<RoleRoute role="admin"><FlowRulesConfig /></RoleRoute>} />
+        <Route path="config/bot-respuesta" element={<FeatureRoute feature="config_bot_response"><Placeholder name="Bot de Respuesta" /></FeatureRoute>} />
+        <Route path="config/flow-rules"    element={<RoleRoute role="admin"><FeatureRoute feature="flow_rules"><FlowRulesConfig /></FeatureRoute></RoleRoute>} />
 
         {/* Automatizaciones */}
-        <Route path="config/enrutamiento"    element={<Placeholder name="Enrutamiento de Chat" />} />
-        <Route path="config/informes"        element={<Placeholder name="Programar Informe" />} />
-        <Route path="config/mensajesRapidos" element={<RoleRoute role="admin"><MensajesRapidosConfig /></RoleRoute>} />
+        <Route path="config/enrutamiento"    element={<FeatureRoute feature="config_chat_routing"><Placeholder name="Enrutamiento de Chat" /></FeatureRoute>} />
+        <Route path="config/informes"        element={<FeatureRoute feature="config_reports"><Placeholder name="Programar Informe" /></FeatureRoute>} />
+        <Route path="config/mensajesRapidos" element={<RoleRoute role="admin"><FeatureRoute feature="quick_messages"><MensajesRapidosConfig /></FeatureRoute></RoleRoute>} />
 
          {/* Desarrolladores */}
-        <Route path="config/integraciones" element={<RoleRoute role="admin"><Integraciones /></RoleRoute>} />
-        <Route path="config/widgets"       element={<Placeholder name="Widgets" />} />
-        <Route path="config/complementos"  element={<Placeholder name="Complementos" />} />
+        <Route path="config/integraciones" element={<RoleRoute role="admin"><FeatureRoute feature="config_integrations"><Integraciones /></FeatureRoute></RoleRoute>} />
+        <Route path="config/widgets"       element={<FeatureRoute feature="config_widgets"><Placeholder name="Widgets" /></FeatureRoute>} />
+        <Route path="config/complementos"  element={<FeatureRoute feature="config_plugins"><Placeholder name="Complementos" /></FeatureRoute>} />
+
         {/* ── Módulos personalizados ── */}
-        <Route path="modules/:slug" element={<ModuleView />} />
+        <Route path="config/modulos" element={<RoleRoute role="admin"><ModulosConfig /></RoleRoute>} />
+        <Route path="modules/:slug"  element={<ModuleView />} />
 
         {/* ── Panel SuperAdministrador ── */}
-        <Route path="superadmin" element={<SuperAdminRoute><SuperAdminPanel /></SuperAdminRoute>} />
-
-        {/* ── Config módulos (solo admin) ── */}
-        <Route path="config/modulos" element={<RoleRoute role="admin"><ModulosConfig /></RoleRoute>} />
+        <Route path="superadmin"              element={<SuperAdminRoute><SuperAdminPanel /></SuperAdminRoute>} />
+        <Route path="gestion-funcionalidades" element={<SuperAdminRoute><GestionFuncionalidades /></SuperAdminRoute>} />
 
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

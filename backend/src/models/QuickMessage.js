@@ -38,6 +38,10 @@ const QuickMessage = sequelize.define('QuickMessage', {
   is_active: {
     type:         DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  company_id: {
+    type:      DataTypes.UUID,
+    allowNull: true
   }
 }, {
   tableName:  'quick_messages',

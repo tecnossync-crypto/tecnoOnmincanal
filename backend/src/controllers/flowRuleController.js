@@ -1,9 +1,15 @@
 // backend/src/controllers/flowRuleController.js
 const { FlowRule } = require('../models');
 
+const companyFilter = (req) =>
+  req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+
 const getAll = async (req, res) => {
   try {
-    const rules = await FlowRule.findAll({ order: [['priority', 'DESC'], ['created_at', 'ASC']] });
+    const rules = await FlowRule.findAll({
+      where: companyFilter(req),
+      order: [['priority', 'DESC'], ['created_at', 'ASC']]
+    });
     res.json({ success: true, data: rules });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -24,7 +30,8 @@ const create = async (req, res) => {
       action_value:  action_value?.trim() || null,
       channel:       channel || 'all',
       priority:      Number(priority) || 0,
-      is_active:     true
+      is_active:     true,
+      company_id:    req.user?.role === 'superadmin' ? null : req.user?.company_id
     });
     res.json({ success: true, data: rule });
   } catch (err) {
@@ -34,7 +41,7 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const rule = await FlowRule.findByPk(req.params.id);
+    const rule = await FlowRule.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!rule) return res.status(404).json({ success: false, message: 'Regla no encontrada' });
     const { name, trigger_type, trigger_value, action_type, action_value, channel, priority, is_active } = req.body;
     await rule.update({
@@ -55,7 +62,7 @@ const update = async (req, res) => {
 
 const toggle = async (req, res) => {
   try {
-    const rule = await FlowRule.findByPk(req.params.id);
+    const rule = await FlowRule.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!rule) return res.status(404).json({ success: false, message: 'Regla no encontrada' });
     await rule.update({ is_active: !rule.is_active });
     res.json({ success: true, data: rule });
@@ -66,7 +73,7 @@ const toggle = async (req, res) => {
 
 const remove = async (req, res) => {
   try {
-    const rule = await FlowRule.findByPk(req.params.id);
+    const rule = await FlowRule.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!rule) return res.status(404).json({ success: false, message: 'Regla no encontrada' });
     await rule.destroy();
     res.json({ success: true });

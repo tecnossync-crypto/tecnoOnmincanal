@@ -28,6 +28,10 @@ const Label = sequelize.define('labels', {
     type: DataTypes.STRING(100),
     allowNull: true,
     defaultValue: null
+  },
+  company_id: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   timestamps: true,

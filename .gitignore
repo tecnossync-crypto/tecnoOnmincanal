@@ -47,3 +47,7 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# ── Claude Code (config local) ──────────────────────────────
+.claude/settings.local.json
+.claude/plans/

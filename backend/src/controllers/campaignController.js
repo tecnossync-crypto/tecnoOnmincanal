@@ -3,11 +3,17 @@ const campaignService = require('../services/campaignService');
 const { Campaign } = require('../models');
 const logger = require('../config/logger');
 
+const companyFilter = (req) =>
+  req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+
 class CampaignController {
 
   async getAll(req, res) {
     try {
-      const campaigns = await Campaign.findAll({ order: [['created_at', 'DESC']] });
+      const campaigns = await Campaign.findAll({
+        where: companyFilter(req),
+        order: [['created_at', 'DESC']]
+      });
       res.json({ success: true, data: campaigns });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -27,7 +33,8 @@ class CampaignController {
     try {
       const campaign = await campaignService.createCampaign({
         ...req.body,
-        created_by: req.user?.id
+        created_by: req.user?.id,
+        company_id: req.user?.role === 'superadmin' ? null : req.user?.company_id
       });
       res.status(201).json({ success: true, data: campaign });
     } catch (error) {
@@ -57,7 +64,8 @@ class CampaignController {
 
   async delete(req, res) {
     try {
-      await Campaign.destroy({ where: { id: req.params.id, status: 'draft' } });
+      const deleted = await Campaign.destroy({ where: { id: req.params.id, status: 'draft', ...companyFilter(req) } });
+      if (!deleted) return res.status(404).json({ success: false, message: 'Campaña no encontrada o no es borrador' });
       res.json({ success: true, message: 'Campaña eliminada' });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

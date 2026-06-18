@@ -7,52 +7,52 @@ const SECTIONS = [
   {
     title: 'General',
     items: [
-      { label: 'Perfil de la empresa',  to: '/config/perfilEmpresa'   },
-      { label: 'Operadores',            to: '/team'                   },
-      { label: 'Etiquetas',             to: '/config/etiquetas'       },
-      { label: 'Panel de información',  to: '/config/panel-info'      },
-      { label: 'Importar contactos',    to: '/config/upload'          },
+      { label: 'Perfil de la empresa',  to: '/config/perfilEmpresa',   feature: 'config_company_profile' },
+      { label: 'Operadores',            to: '/team',                   feature: 'team_management' },
+      { label: 'Etiquetas',             to: '/config/etiquetas',       feature: 'labels' },
+      { label: 'Panel de información',  to: '/config/panel-info',      feature: 'config_info_panel' },
+      { label: 'Importar contactos',    to: '/config/upload',          feature: 'config_import_contacts' },
     ],
   },
   {
     title: 'Canales',
     items: [
-      { label: 'WhatsApp API (Meta)',   to: '/config/whatsapp',  badge: 'Meta' },
-      { label: 'Messenger',             to: '/config/messenger'  },
-      { label: 'Instagram',             to: '/config/instagram'  },
-      { label: 'TikTok',               to: '/config/tiktok'     },
-      { label: 'Telegram',             to: '/config/telegram'   },
+      { label: 'WhatsApp API (Meta)',   to: '/config/whatsapp',  badge: 'Meta', feature: 'whatsapp_business' },
+      { label: 'Messenger',             to: '/config/messenger',  feature: 'config_messenger' },
+      { label: 'Instagram',             to: '/config/instagram',  feature: 'config_instagram' },
+      { label: 'TikTok',               to: '/config/tiktok',     feature: 'config_tiktok' },
+      { label: 'Telegram',             to: '/config/telegram',   feature: 'config_telegram' },
     ],
   },
   {
     title: 'Bot IA',
     items: [
-      { label: 'Configuración del bot', to: '/bot-config'             },
-      { label: 'Reglas de flujo',       to: '/config/flow-rules'      },
-      { label: 'Bot de respuesta',      to: '/config/bot-respuesta'   },
+      { label: 'Configuración del bot', to: '/bot-config',            feature: 'bot_ai' },
+      { label: 'Reglas de flujo',       to: '/config/flow-rules',     feature: 'flow_rules' },
+      { label: 'Bot de respuesta',      to: '/config/bot-respuesta',  feature: 'config_bot_response' },
     ],
   },
   {
     title: 'Automatizaciones',
     items: [
-      { label: 'Campañas masivas',      to: '/campaigns'              },
-      { label: 'Mensajes rápidos',      to: '/config/mensajesRapidos' },
-      { label: 'Enrutamiento de chat',  to: '/config/enrutamiento'    },
-      { label: 'Programar informe',     to: '/config/informes'        },
+      { label: 'Campañas masivas',      to: '/campaigns',              feature: 'campaigns' },
+      { label: 'Mensajes rápidos',      to: '/config/mensajesRapidos', feature: 'quick_messages' },
+      { label: 'Enrutamiento de chat',  to: '/config/enrutamiento',    feature: 'config_chat_routing' },
+      { label: 'Programar informe',     to: '/config/informes',        feature: 'config_reports' },
     ],
   },
   {
     title: 'Módulos',
     items: [
-      { label: 'Módulos personalizados', to: '/config/modulos' },
+      { label: 'Módulos personalizados', to: '/config/modulos', feature: 'custom_modules' },
     ],
   },
   {
     title: 'Desarrolladores',
     items: [
-      { label: 'Integraciones',         to: '/config/integraciones'   },
-      { label: 'Widgets',               to: '/config/widgets'         },
-      { label: 'Complementos',          to: '/config/complementos'    },
+      { label: 'Integraciones',         to: '/config/integraciones',   feature: 'config_integrations' },
+      { label: 'Widgets',               to: '/config/widgets',         feature: 'config_widgets' },
+      { label: 'Complementos',          to: '/config/complementos',    feature: 'config_plugins' },
     ],
   },
 ];
@@ -60,14 +60,15 @@ const SECTIONS = [
 export default function Settings() {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, hasFeature } = useAuthStore();
   const isAdmin = user?.role === 'admin';
 
   const filtered = SECTIONS
     .map(section => ({
       ...section,
       items: section.items.filter(item =>
-        item.label.toLowerCase().includes(query.toLowerCase())
+        item.label.toLowerCase().includes(query.toLowerCase()) &&
+        (!item.feature || hasFeature(item.feature))
       ),
     }))
     .filter(section => section.items.length > 0);

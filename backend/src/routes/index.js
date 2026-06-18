@@ -99,11 +99,11 @@ router.delete('/transfer-criteria/:id',  auth, requireRole('admin'), transferCri
 // ─────────────────────────────────────
 // REGLAS DE FLUJO DEL BOT
 // ─────────────────────────────────────
-router.get   ('/flow-rules',          auth, requireFeature('flow_rules'), flowRuleController.getAll);
-router.post  ('/flow-rules',          auth, requireRole('admin'), requireFeature('flow_rules'), flowRuleController.create);
-router.put   ('/flow-rules/:id',      auth, requireRole('admin'), requireFeature('flow_rules'), flowRuleController.update);
-router.patch ('/flow-rules/:id/toggle', auth, requireRole('admin'), requireFeature('flow_rules'), flowRuleController.toggle);
-router.delete('/flow-rules/:id',      auth, requireRole('admin'), requireFeature('flow_rules'), flowRuleController.remove);
+router.get   ('/flow-rules',          auth, requireFeature('flow_rules'), companyScope, flowRuleController.getAll);
+router.post  ('/flow-rules',          auth, requireRole('admin'), requireFeature('flow_rules'), companyScope, flowRuleController.create);
+router.put   ('/flow-rules/:id',      auth, requireRole('admin'), requireFeature('flow_rules'), companyScope, flowRuleController.update);
+router.patch ('/flow-rules/:id/toggle', auth, requireRole('admin'), requireFeature('flow_rules'), companyScope, flowRuleController.toggle);
+router.delete('/flow-rules/:id',      auth, requireRole('admin'), requireFeature('flow_rules'), companyScope, flowRuleController.remove);
 
 // ─────────────────────────────────────
 // MÓDULOS PERSONALIZADOS
@@ -124,11 +124,11 @@ router.delete('/module-records/:id',          auth, requireRole('admin'), requir
 // ─────────────────────────────────────
 // MENSAJES RÁPIDOS
 // ─────────────────────────────────────
-router.get   ('/quick-messages',        auth, requireFeature('quick_messages'), quickMessageController.getAll);
-router.get   ('/quick-messages/admin',  auth, requireRole('admin'), requireFeature('quick_messages'), quickMessageController.getAllAdmin);
-router.post  ('/quick-messages',        auth, requireRole('admin'), requireFeature('quick_messages'), quickMessageController.create);
-router.put   ('/quick-messages/:id',    auth, requireRole('admin'), requireFeature('quick_messages'), quickMessageController.update);
-router.delete('/quick-messages/:id',    auth, requireRole('admin'), requireFeature('quick_messages'), quickMessageController.remove);
+router.get   ('/quick-messages',        auth, requireFeature('quick_messages'), companyScope, quickMessageController.getAll);
+router.get   ('/quick-messages/admin',  auth, requireRole('admin'), requireFeature('quick_messages'), companyScope, quickMessageController.getAllAdmin);
+router.post  ('/quick-messages',        auth, requireRole('admin'), requireFeature('quick_messages'), companyScope, quickMessageController.create);
+router.put   ('/quick-messages/:id',    auth, requireRole('admin'), requireFeature('quick_messages'), companyScope, quickMessageController.update);
+router.delete('/quick-messages/:id',    auth, requireRole('admin'), requireFeature('quick_messages'), companyScope, quickMessageController.remove);
 
 // ─────────────────────────────────────
 // CONVERSACIONES
@@ -170,12 +170,12 @@ router.post  ('/bot-configs/test', auth, botConfigController.test.bind(botConfig
 // ─────────────────────────────────────
 // CAMPAÑAS MASIVAS — solo admin
 // ─────────────────────────────────────
-router.get   ('/campaigns',             auth, requireRole('admin'), requireFeature('campaigns'), campaignController.getAll.bind(campaignController));
-router.get   ('/campaigns/:id',         auth, requireRole('admin'), requireFeature('campaigns'), campaignController.getOne.bind(campaignController));
-router.post  ('/campaigns',             auth, requireRole('admin'), requireFeature('campaigns'), campaignController.create.bind(campaignController));
-router.post  ('/campaigns/:id/launch',  auth, requireRole('admin'), requireFeature('campaigns'), campaignController.launch.bind(campaignController));
-router.post  ('/campaigns/:id/pause',   auth, requireRole('admin'), requireFeature('campaigns'), campaignController.pause.bind(campaignController));
-router.delete('/campaigns/:id',         auth, requireRole('admin'), requireFeature('campaigns'), campaignController.delete.bind(campaignController));
+router.get   ('/campaigns',             auth, requireRole('admin'), requireFeature('campaigns'), companyScope, campaignController.getAll.bind(campaignController));
+router.get   ('/campaigns/:id',         auth, requireRole('admin'), requireFeature('campaigns'), companyScope, campaignController.getOne.bind(campaignController));
+router.post  ('/campaigns',             auth, requireRole('admin'), requireFeature('campaigns'), companyScope, campaignController.create.bind(campaignController));
+router.post  ('/campaigns/:id/launch',  auth, requireRole('admin'), requireFeature('campaigns'), companyScope, campaignController.launch.bind(campaignController));
+router.post  ('/campaigns/:id/pause',   auth, requireRole('admin'), requireFeature('campaigns'), companyScope, campaignController.pause.bind(campaignController));
+router.delete('/campaigns/:id',         auth, requireRole('admin'), requireFeature('campaigns'), companyScope, campaignController.delete.bind(campaignController));
 
 // ─────────────────────────────────────
 // INTEGRACIONES CON PLATAFORMAS EXTERNAS

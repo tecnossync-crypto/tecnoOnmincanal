@@ -52,6 +52,10 @@ const FlowRule = sequelize.define('FlowRule', {
   channel: {
     type:         DataTypes.STRING(30),
     defaultValue: 'all'
+  },
+  company_id: {
+    type:      DataTypes.UUID,
+    allowNull: true
   }
 }, {
   tableName:  'flow_rules',

@@ -103,7 +103,7 @@ const migrate = async () => {
 
     // Corregir columnas INTEGER → UUID en appointments y document_templates
     // PostgreSQL no permite cambiar INTEGER a UUID directamente; drop + add es seguro en tablas nuevas
-    for (const [table, col] of [['appointments','created_by'],['appointments','assigned_to'],['document_templates','created_by']]) {
+    for (const [table, col] of [['appointments','created_by'],['appointments','assigned_to'],['document_templates','created_by'],['module_records','created_by'],['module_records','conversation_id']]) {
       try {
         await sequelize.query(`
           DO $$ BEGIN
@@ -174,6 +174,22 @@ const migrate = async () => {
       `);
     } catch (_) {}
 
+    // Agregar config-menu features a empresas existentes
+    const configFeatureKeys = [
+      'config_company_profile', 'config_info_panel', 'config_import_contacts',
+      'config_messenger', 'config_instagram', 'config_tiktok', 'config_telegram',
+      'config_bot_response', 'config_chat_routing', 'config_reports',
+      'config_integrations', 'config_widgets', 'config_plugins',
+    ];
+    for (const feat of configFeatureKeys) {
+      try {
+        await sequelize.query(`
+          UPDATE company SET active_features = active_features || '{"${feat}":true}'::jsonb
+          WHERE active_features IS NOT NULL AND NOT (active_features ? '${feat}')
+        `);
+      } catch (_) {}
+    }
+
     // ── Migración multi-tenant y recuperación de contraseña ──────────────
     // Nuevas columnas en users
     await safeAdd('users', 'reset_token',         { type: DT.STRING(200), allowNull: true });
@@ -182,7 +198,8 @@ const migrate = async () => {
     // company_id en tablas que aún no lo tengan
     const tablasTenant = [
       'whatsapp_chats', 'campaigns', 'labels',
-      'quick_messages', 'custom_modules', 'module_records'
+      'quick_messages', 'custom_modules', 'module_records',
+      'flow_rules'
     ];
     for (const t of tablasTenant) {
       await safeAdd(t, 'company_id', { type: DT.UUID, allowNull: true });
@@ -211,6 +228,7 @@ const migrate = async () => {
           { t: 'module_records', extra: '' },
           { t: 'payment_vouchers', extra: '' },
           { t: 'bot_configs',    extra: '' },
+          { t: 'flow_rules',    extra: '' },
         ];
         for (const { t, extra } of tablasPoblar) {
           try {

@@ -167,6 +167,10 @@ const ALLOWED_FEATURES = [
   'vouchers', 'appointments', 'document_templates', 'bot_ai',
   'flow_rules', 'quick_messages', 'labels', 'custom_modules',
   'bot_catalogs', 'dashboard', 'team_management', 'merge_templates',
+  'config_company_profile', 'config_info_panel', 'config_import_contacts',
+  'config_messenger', 'config_instagram', 'config_tiktok', 'config_telegram',
+  'config_bot_response', 'config_chat_routing', 'config_reports',
+  'config_integrations', 'config_widgets', 'config_plugins',
 ];
 
 const getFeatures = async (req, res) => {

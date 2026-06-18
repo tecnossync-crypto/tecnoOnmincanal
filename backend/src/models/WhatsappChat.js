@@ -62,6 +62,10 @@ const WhatsappChat = sequelize.define('whatsapp_chats', {
     type:      DataTypes.STRING(100),
     allowNull: true,
     comment:   'WhatsApp @lid JID → mapeo persistente LID→real JID'
+  },
+  company_id: {
+    type:      DataTypes.UUID,
+    allowNull: true
   }
 }, {
   indexes: [

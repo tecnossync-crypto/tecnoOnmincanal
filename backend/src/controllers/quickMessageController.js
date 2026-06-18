@@ -1,18 +1,19 @@
 // backend/src/controllers/quickMessageController.js
 const { QuickMessage } = require('../models');
 
+const companyFilter = (req) =>
+  req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+
 const getAll = async (req, res) => {
   try {
     const { channel } = req.query;
-    const where = { is_active: true };
-    if (channel && channel !== 'all') {
-      where[require('sequelize').Op ? 'channel' : 'channel'] = channel;
-    }
     const { Op } = require('sequelize');
+    const where = { is_active: true, ...companyFilter(req) };
+    if (channel && channel !== 'all') {
+      where.channel = { [Op.in]: [channel, 'all'] };
+    }
     const messages = await QuickMessage.findAll({
-      where: channel && channel !== 'all'
-        ? { is_active: true, channel: { [Op.in]: [channel, 'all'] } }
-        : { is_active: true },
+      where,
       order: [['sort_order', 'ASC'], ['created_at', 'ASC']]
     });
     res.json({ success: true, data: messages });
@@ -24,6 +25,7 @@ const getAll = async (req, res) => {
 const getAllAdmin = async (req, res) => {
   try {
     const messages = await QuickMessage.findAll({
+      where: companyFilter(req),
       order: [['sort_order', 'ASC'], ['created_at', 'ASC']]
     });
     res.json({ success: true, data: messages });
@@ -44,7 +46,8 @@ const create = async (req, res) => {
       category:   category?.trim() || 'General',
       channel:    channel || 'all',
       sort_order: Number(sort_order) || 0,
-      is_active:  true
+      is_active:  true,
+      company_id: req.user?.role === 'superadmin' ? null : req.user?.company_id
     });
     res.json({ success: true, data: msg });
   } catch (err) {
@@ -54,7 +57,7 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const msg = await QuickMessage.findByPk(req.params.id);
+    const msg = await QuickMessage.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!msg) return res.status(404).json({ success: false, message: 'Mensaje no encontrado' });
     const { title, shortcut, content, category, channel, sort_order, is_active } = req.body;
     await msg.update({
@@ -74,7 +77,7 @@ const update = async (req, res) => {
 
 const remove = async (req, res) => {
   try {
-    const msg = await QuickMessage.findByPk(req.params.id);
+    const msg = await QuickMessage.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!msg) return res.status(404).json({ success: false, message: 'Mensaje no encontrado' });
     await msg.destroy();
     res.json({ success: true });

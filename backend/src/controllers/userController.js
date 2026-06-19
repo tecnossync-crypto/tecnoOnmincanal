@@ -1,6 +1,8 @@
 // backend/src/controllers/userController.js
-const { User } = require('../models');
-const logger   = require('../config/logger');
+const { User }           = require('../models');
+const Company            = require('../models/Company');
+const logger             = require('../config/logger');
+const { sendWelcomeEmail } = require('../services/emailService');
 
 class UserController {
 
@@ -26,7 +28,11 @@ class UserController {
   // POST /users
   async create(req, res) {
     try {
-      const { name, email, password, role = 'agent', company_id } = req.body;
+      const {
+        name, email, password, role = 'agent', company_id,
+        cedula, identificacion, genero, fecha_nacimiento, fecha_incorporacion,
+        idioma_preferido, zona_horaria, movil, telefono, extension_telefono,
+      } = req.body;
 
       if (!name || !email || !password)
         return res.status(400).json({ success: false, message: 'Nombre, email y contraseña son requeridos.' });
@@ -53,13 +59,55 @@ class UserController {
       if (role !== 'superadmin' && !assignedCompany)
         return res.status(400).json({ success: false, message: 'Se requiere company_id.' });
 
+      // Superadmin no necesita verificar email (cuenta del sistema)
+      const needsVerification = role !== 'superadmin';
+      const verificationCode    = needsVerification
+        ? String(Math.floor(100000 + Math.random() * 900000))
+        : null;
+      const verificationExpires = needsVerification
+        ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+        : null;
+
       const user = await User.create({
         name,
-        email:         email.toLowerCase(),
-        password_hash: password,
+        email:                      email.toLowerCase(),
+        password_hash:              password,
         role,
-        company_id:    role === 'superadmin' ? null : assignedCompany
+        company_id:                 role === 'superadmin' ? null : assignedCompany,
+        email_verified:             !needsVerification,
+        email_verification_code:    verificationCode,
+        email_verification_expires: verificationExpires,
+        ...(cedula              && { cedula }),
+        ...(identificacion      && { identificacion }),
+        ...(genero              && { genero }),
+        ...(fecha_nacimiento    && { fecha_nacimiento }),
+        ...(fecha_incorporacion && { fecha_incorporacion }),
+        ...(idioma_preferido    && { idioma_preferido }),
+        ...(zona_horaria        && { zona_horaria }),
+        ...(movil               && { movil }),
+        ...(telefono            && { telefono }),
+        ...(extension_telefono  && { extension_telefono }),
       });
+
+      // Enviar email de bienvenida con código de verificación
+      if (needsVerification) {
+        try {
+          let companyName = null;
+          if (assignedCompany) {
+            const company = await Company.findByPk(assignedCompany, { attributes: ['nombre'] });
+            companyName = company?.nombre || null;
+          }
+          await sendWelcomeEmail({
+            toEmail:          email.toLowerCase(),
+            userName:         name,
+            companyName,
+            password,           // contraseña en texto plano (antes de hashear en BD)
+            verificationCode,
+          });
+        } catch (emailErr) {
+          logger.warn(`⚠️  No se pudo enviar email de bienvenida a ${email}:`, emailErr.message);
+        }
+      }
 
       logger.info(`✅ Usuario creado: ${email} (${role}) empresa: ${assignedCompany} por ${req.user.email}`);
       res.status(201).json({ success: true, data: user.toJSON() });
@@ -89,10 +137,18 @@ class UserController {
         ? ['superadmin', 'admin', 'agent', 'supervisor']
         : ['admin', 'agent', 'supervisor'];
 
+      const PROFILE_FIELDS = [
+        'cedula', 'identificacion', 'genero', 'fecha_nacimiento', 'fecha_incorporacion',
+        'idioma_preferido', 'zona_horaria', 'movil', 'telefono', 'extension_telefono',
+      ];
+
       const updates = {};
       if (name)  updates.name  = name;
       if (email) updates.email = email.toLowerCase();
       if (role && allowedRoles.includes(role)) updates.role = role;
+      for (const field of PROFILE_FIELDS) {
+        if (req.body[field] !== undefined) updates[field] = req.body[field] || null;
+      }
 
       await user.update(updates);
       res.json({ success: true, data: user.toJSON() });

@@ -33,7 +33,10 @@ api.interceptors.response.use(
       toast.error('Error del servidor. Intenta de nuevo.');
     }
 
-    return Promise.reject(new Error(msg));
+    const richErr = new Error(msg);
+    richErr.code   = error.response?.data?.code;
+    richErr.status = error.response?.status;
+    return Promise.reject(richErr);
   }
 );
 

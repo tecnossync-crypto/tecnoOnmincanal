@@ -17,7 +17,8 @@ class BotConfigController {
 
   async getOne(req, res) {
     try {
-      const config = await BotConfig.findByPk(req.params.id);
+      const cf = req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+      const config = await BotConfig.findOne({ where: { id: req.params.id, ...cf } });
       if (!config) return res.status(404).json({ success: false, message: 'Configuración no encontrada' });
       res.json({ success: true, data: config });
     } catch (error) {
@@ -38,7 +39,8 @@ class BotConfigController {
 
   async update(req, res) {
     try {
-      const config = await BotConfig.findByPk(req.params.id);
+      const cf = req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+      const config = await BotConfig.findOne({ where: { id: req.params.id, ...cf } });
       if (!config) return res.status(404).json({ success: false, message: 'No encontrado' });
       
       await config.update(req.body);
@@ -51,7 +53,8 @@ class BotConfigController {
 
   async delete(req, res) {
     try {
-      const config = await BotConfig.findByPk(req.params.id);
+      const cf = req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+      const config = await BotConfig.findOne({ where: { id: req.params.id, ...cf } });
       if (!config) return res.status(404).json({ success: false, message: 'No encontrado' });
       
       await config.destroy();
@@ -73,7 +76,8 @@ async test(req, res) {
       return res.status(400).json({ success: false, message: 'Campos requeridos: instrucciones y mensaje' });
  
     const { Integration } = require('../models');
-    const integration = await Integration.findOne({ where: { is_active: true } });
+    const cfTest = req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+    const integration = await Integration.findOne({ where: { is_active: true, ...cfTest } });
  
     if (!integration)
       return res.status(400).json({

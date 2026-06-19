@@ -59,11 +59,11 @@ function extractTokens(filePath) {
 }
 
 // ── Resolve field values ─────────────────────────────────────────────────────
-async function resolveValues(fields, contact, manualValues = {}) {
+async function resolveValues(fields, contact, manualValues = {}, companyId = null) {
   let company = null;
   try {
     const Company = require('../models/Company');
-    company = await Company.findOne();
+    company = await Company.findOne(companyId ? { where: { id: companyId } } : {});
   } catch (_) {}
 
   const values = {};
@@ -227,7 +227,7 @@ const generate = async (req, res) => {
       contact = await Contact.findByPk(req.body.contactId);
     }
 
-    const values  = await resolveValues(tpl.fields, contact, req.body.manualFields || {});
+    const values  = await resolveValues(tpl.fields, contact, req.body.manualFields || {}, tpl.company_id || req.user?.company_id);
     const docxBuf = generateDocx(filePath, values);
     const format  = req.body.format === 'pdf' ? 'pdf' : 'docx';
     const baseName = `${tpl.name.replace(/[^a-z0-9]/gi,'_')}_${Date.now()}`;
@@ -279,7 +279,7 @@ const send = async (req, res) => {
       contact = await Contact.findByPk(contactId);
     }
 
-    const values   = await resolveValues(tpl.fields, contact, manualFields);
+    const values   = await resolveValues(tpl.fields, contact, manualFields, tpl.company_id || req.user?.company_id);
     const docxBuf  = generateDocx(filePath, values);
     const baseName = `${tpl.name.replace(/[^a-z0-9]/gi,'_')}_${Date.now()}`;
 

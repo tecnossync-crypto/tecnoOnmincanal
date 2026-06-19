@@ -141,16 +141,20 @@ class CampaignService {
    * Obtiene los contactos para una campaña según sus filtros
    */
   async getAudience(campaign) {
-    const where = {};
+    const { Op } = require('sequelize');
+    const where  = {};
     const filter = campaign.audience_filter || {};
+
+    // Aislar contactos de la empresa de la campaña
+    if (campaign.company_id) where.company_id = campaign.company_id;
 
     // Filtrar por canal (solo contactos que tienen ID en ese canal)
     const channelField = `${campaign.channel}_id`;
-    where[channelField] = { [require('sequelize').Op.ne]: null };
+    where[channelField] = { [Op.ne]: null };
 
     // Filtrar por tags si se especificaron
     if (filter.tags && filter.tags.length > 0) {
-      where.tags = { [require('sequelize').Op.overlap]: filter.tags };
+      where.tags = { [Op.overlap]: filter.tags };
     }
 
     return Contact.findAll({ where, limit: 10000 });

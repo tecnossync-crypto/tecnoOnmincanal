@@ -75,7 +75,53 @@ const migrate = async () => {
   };
 
   try {
+    // ── Pre-migración: columnas que deben existir ANTES del primer sync ──────
+    // (si el modelo declara un índice sobre una columna nueva, sync falla si la
+    //  columna no existe aún en la tabla).
+    const preCols = [
+      { table: 'integrations', col: 'company_id',          def: { type: DT.UUID,        allowNull: true } },
+      { table: 'bot_files',    col: 'company_id',          def: { type: DT.UUID,        allowNull: true } },
+      { table: 'bot_catalogs', col: 'company_id',          def: { type: DT.UUID,        allowNull: true } },
+      { table: 'users',        col: 'pending_email',        def: { type: DT.STRING,      allowNull: true } },
+      { table: 'users',        col: 'email_change_token',   def: { type: DT.STRING(200), allowNull: true } },
+      { table: 'users',        col: 'email_change_expires', def: { type: DT.DATE,        allowNull: true } },
+      { table: 'users',        col: 'online_started_at',          def: { type: DT.DATE,        allowNull: true } },
+      { table: 'users',        col: 'total_online_minutes',       def: { type: DT.INTEGER,     defaultValue: 0,    allowNull: false } },
+      { table: 'users', col: 'email_verified',             def: { type: DT.BOOLEAN,    defaultValue: false,                   allowNull: false } },
+      { table: 'users', col: 'email_verification_code',    def: { type: DT.STRING(6),  allowNull: true } },
+      { table: 'users', col: 'email_verification_expires', def: { type: DT.DATE,       allowNull: true } },
+      // Campos extendidos de perfil
+      { table: 'users', col: 'cedula',               def: { type: DT.STRING(20),  allowNull: true } },
+      { table: 'users', col: 'identificacion',        def: { type: DT.STRING(50),  allowNull: true } },
+      { table: 'users', col: 'genero',                def: { type: DT.STRING(30),  allowNull: true } },
+      { table: 'users', col: 'fecha_nacimiento',      def: { type: DT.DATEONLY,    allowNull: true } },
+      { table: 'users', col: 'fecha_incorporacion',   def: { type: DT.DATEONLY,    allowNull: true } },
+      { table: 'users', col: 'idioma_preferido',      def: { type: DT.STRING(10),  allowNull: true, defaultValue: 'es' } },
+      { table: 'users', col: 'zona_horaria',          def: { type: DT.STRING(60),  allowNull: true, defaultValue: 'America/Santo_Domingo' } },
+      { table: 'users', col: 'movil',                 def: { type: DT.STRING(30),  allowNull: true } },
+      { table: 'users', col: 'telefono',              def: { type: DT.STRING(30),  allowNull: true } },
+      { table: 'users', col: 'extension_telefono',    def: { type: DT.STRING(10),  allowNull: true } },
+      // OTP de inicio de sesión
+      { table: 'users', col: 'login_otp',             def: { type: DT.STRING(6),   allowNull: true } },
+      { table: 'users', col: 'login_otp_expires',     def: { type: DT.DATE,        allowNull: true } },
+      // Google Calendar
+      { table: 'company',       col: 'google_calendar_tokens', def: { type: DT.JSONB,       allowNull: true, defaultValue: null } },
+      { table: 'appointments',  col: 'google_event_id',        def: { type: DT.STRING(500), allowNull: true } },
+    ];
+    for (const { table, col, def } of preCols) {
+      await safeAdd(table, col, def);
+    }
+
     await sequelize.sync({ force: false });
+
+    // Marcar como verificados los usuarios que existían ANTES de esta feature
+    // (columna recién agregada viene en NULL o false para registros previos)
+    try {
+      await sequelize.query(
+        `UPDATE users SET email_verified = true WHERE email_verified IS NOT TRUE AND created_at < NOW() - INTERVAL '1 minute'`
+      );
+      logger.info('  ✅ Usuarios existentes marcados como email_verified');
+    } catch (e) { logger.warn('  ⚠️  No se pudo marcar usuarios existentes:', e.message); }
 
     // Garantizar que las tablas de módulos existan SIEMPRE, independientemente del alter
     await CustomModule.sync({ force: false });
@@ -199,7 +245,7 @@ const migrate = async () => {
     const tablasTenant = [
       'whatsapp_chats', 'campaigns', 'labels',
       'quick_messages', 'custom_modules', 'module_records',
-      'flow_rules'
+      'flow_rules', 'integrations'
     ];
     for (const t of tablasTenant) {
       await safeAdd(t, 'company_id', { type: DT.UUID, allowNull: true });
@@ -229,6 +275,14 @@ const migrate = async () => {
           { t: 'payment_vouchers', extra: '' },
           { t: 'bot_configs',    extra: '' },
           { t: 'flow_rules',    extra: '' },
+          { t: 'integrations',  extra: '' },
+          { t: 'bot_files',           extra: '' },
+          { t: 'bot_catalogs',        extra: '' },
+          { t: 'document_templates',  extra: '' },
+          { t: 'document_requests',   extra: '' },
+          { t: 'appointments',        extra: '' },
+          { t: 'business_schedules',  extra: '' },
+          { t: 'merge_templates',     extra: '' },
         ];
         for (const { t, extra } of tablasPoblar) {
           try {

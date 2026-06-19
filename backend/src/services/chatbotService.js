@@ -121,11 +121,41 @@ class ChatbotService {
     }
   }
 
+  // ─── Construye bloque con plantillas de documentos disponibles ──────────────
+  async buildDocumentTemplatesContext(companyId) {
+    try {
+      const { DocumentTemplate } = require('../models');
+      const where = companyId ? { company_id: companyId } : {};
+      const templates = await DocumentTemplate.findAll({ where, attributes: ['name', 'description', 'fields'] });
+      if (!templates.length) return '';
+
+      const lines = ['=== PLANTILLAS DE DOCUMENTOS DISPONIBLES ==='];
+      for (const tpl of templates) {
+        const manualFields = (tpl.fields || []).filter(f => f.source === 'manual');
+        const desc = tpl.description ? ` — ${tpl.description}` : '';
+        lines.push(`- "${tpl.name}"${desc}`);
+        if (manualFields.length) {
+          lines.push(`  Datos que se solicitan al cliente: ${manualFields.map(f => f.label).join(', ')}`);
+        }
+      }
+      lines.push('');
+      lines.push('Cuando el cliente solicite un documento, contrato, acuerdo o formulario formal, responde confirmando que procederás y agrega al final de tu mensaje EXACTAMENTE (sin comillas ni espacios extra):');
+      lines.push('[START_DOC:Nombre exacto de la plantilla]');
+      lines.push('Solo usa [START_DOC:...] cuando el cliente lo pida explícitamente, no en respuestas informativas.');
+      lines.push('===========================================');
+      return lines.join('\n');
+    } catch (err) {
+      logger.warn('buildDocumentTemplatesContext error:', err.message);
+      return '';
+    }
+  }
+
   // ─── Resuelve tokens {{catalogo:identificador}} en el system prompt ──
-  async resolvePromptCatalogs(systemPrompt) {
+  async resolvePromptCatalogs(systemPrompt, companyId) {
     // Prepend company context automatically
     const companyCtx = await this.buildCompanyContext();
-    const base = companyCtx ? `${companyCtx}\n\n` : '';
+    const docCtx     = await this.buildDocumentTemplatesContext(companyId);
+    const base = [companyCtx, docCtx].filter(Boolean).join('\n\n') + (companyCtx || docCtx ? '\n\n' : '');
 
     if (!systemPrompt || !systemPrompt.includes('{{catalogo:')) return base + (systemPrompt || '');
     try {
@@ -338,7 +368,7 @@ class ChatbotService {
       }
 
       const history        = await this.buildConversationHistory(conversation.id, config.max_history_messages);
-      const resolvedPrompt = await this.resolvePromptCatalogs(config.system_prompt);
+      const resolvedPrompt = await this.resolvePromptCatalogs(config.system_prompt, conversation.company_id);
       const rawResponse    = await this.callAI(
         integration.provider,
         integration.api_key,
@@ -487,9 +517,6 @@ class ChatbotService {
     }
 
     try {
-      const path = require('path');
-      const fs   = require('fs');
-
       // 1. ¿Hay una recolección activa para este jid?
       let activeReq = null;
       try {
@@ -505,10 +532,10 @@ class ChatbotService {
 
       if (activeReq) {
         // Palabras de escape: el cliente puede cancelar la recolección en cualquier momento
-        const CANCEL_WORDS = ['cancelar', 'salir', 'parar', 'detener', 'cancel', 'stop', 'exit'];
+        const CANCEL_WORDS = ['cancelar', 'salir', 'parar', 'detener', 'cancel', 'stop', 'exit', 'no'];
         if (CANCEL_WORDS.includes(body.trim().toLowerCase())) {
           await activeReq.update({ status: 'rejected' });
-          return { handled: false }; // devolver control al bot de IA
+          return { handled: true, reply: 'Solicitud cancelada. Si necesitas el documento en otro momento, solo escríbeme.' };
         }
 
         const tpl          = activeReq.template;
@@ -517,133 +544,45 @@ class ChatbotService {
             .reduce((acc, f) => { if (!acc[f.key]) acc[f.key] = f; return acc; }, {})
         );
         const idx          = activeReq.current_field_index;
+        const collectedSoFar = activeReq.collected_fields || {};
 
+        // ── Fase de confirmación ─────────────────────────────────────────────
+        if (collectedSoFar.__awaiting_confirmation) {
+          const CONFIRM_WORDS = ['si', 'sí', 'yes', 'correcto', 'confirmar', 'confirmo', 'ok', 'listo', 'exacto'];
+          const bodyLow = body.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+          const confirmed = CONFIRM_WORDS.some(w => bodyLow === w || bodyLow.startsWith(w + ' '));
+
+          if (!confirmed) {
+            await activeReq.update({ status: 'rejected' });
+            return { handled: true, reply: 'Solicitud cancelada. Si deseas volver a intentarlo, escríbeme cuando gustes.' };
+          }
+
+          // Cliente confirmó → generar documento
+          const generated = await this._generateDocument(activeReq, tpl, collectedSoFar, jid, chatRecord, io);
+          return generated;
+        }
+
+        // ── Recolección de campos ────────────────────────────────────────────
         if (idx < manualFields.length) {
           const field     = manualFields[idx];
-          const collected = { ...(activeReq.collected_fields || {}), [field.key]: body.trim() };
+          const collected = { ...collectedSoFar, [field.key]: body.trim() };
           const nextIdx   = idx + 1;
 
           if (nextIdx < manualFields.length) {
-            // Pedir siguiente campo — devolver texto para que whatsappService lo envíe
             await activeReq.update({ collected_fields: collected, current_field_index: nextIdx });
             const nextField = manualFields[nextIdx];
             return { handled: true, reply: `${nextField.label}:` };
           } else {
-            // Todos los campos recogidos → generar documento
-            await activeReq.update({ collected_fields: collected, current_field_index: nextIdx });
-            try {
-              const { TEMPLATE_DIR, GENERATED_DIR } = require('../middleware/uploadTemplate');
-              const PizZip        = require('pizzip');
-              const Docxtemplater = require('docxtemplater');
+            // Todos los campos recogidos → pedir confirmación al cliente
+            await activeReq.update({ collected_fields: { ...collected, __awaiting_confirmation: true }, current_field_index: nextIdx });
 
-              const today = new Date();
-              const dateStr = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
-              let contactName  = chatRecord?.contact_name || '';
-              let contactPhone = jid.replace(/@.+/, '');
-              try {
-                const contact = await Contact.findOne({ where: { phone: contactPhone } });
-                if (contact) contactName = contact.name || contactName;
-              } catch (_) {}
-
-              const AUTO_RESOLVE = {
-                'contact.name':  contactName,
-                'contact.phone': contactPhone,
-                'date.today':    dateStr,
-              };
-
-              const values = {};
-              for (const f of (tpl.fields || [])) {
-                if (f.source === 'manual') {
-                  values[f.key] = collected[f.key] ?? f.default_value ?? '';
-                } else if (f.source && AUTO_RESOLVE[f.source] !== undefined) {
-                  values[f.key] = AUTO_RESOLVE[f.source];
-                } else {
-                  values[f.key] = f.default_value ?? '';
-                }
-              }
-
-              const tplPath = path.join(TEMPLATE_DIR, tpl.filename_stored);
-              const content = fs.readFileSync(tplPath, 'binary');
-              const zip     = new PizZip(content);
-              const doc     = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
-              doc.render(values);
-              const buf     = doc.getZip().generate({ type: 'nodebuffer' });
-              const outName = `${Date.now()}_${tpl.filename_stored}`;
-              if (!fs.existsSync(GENERATED_DIR)) fs.mkdirSync(GENERATED_DIR, { recursive: true });
-              fs.writeFileSync(path.join(GENERATED_DIR, outName), buf);
-
-              await activeReq.update({ status: 'ready', generated_file_path: outName });
-              logger.info(`📄 Documento generado para ${jid}: ${outName}`);
-            } catch (genErr) {
-              logger.error('Error generando documento:', genErr.message);
-              await activeReq.update({ status: 'ready' });
+            const lines = ['Estos son los datos que registré para tu documento:'];
+            for (const f of manualFields) {
+              lines.push(`• *${f.label}:* ${collected[f.key] || '—'}`);
             }
-
-            // Notificar a agentes por socket
-            logger.info(`📡 Emitiendo document:ready para ${jid} — io=${!!io} requestId=${activeReq.id}`);
-            io?.to('agents').emit('document:ready', {
-              requestId:    activeReq.id,
-              jid,
-              sessionId,
-              templateName: tpl.name,
-              companyId:    chatRecord?.company_id,
-            });
-
-            // Auto-merge: buscar plantillas merge vinculadas y generar mensajes automáticamente
-            try {
-              const mergeService = require('./mergeService');
-              const { MergeTemplate, Conversation } = require('../models');
-              const { Op } = require('sequelize');
-
-              const autoTemplates = await MergeTemplate.findAll({
-                where: {
-                  auto_merge: true,
-                  activo: true,
-                  ...(chatRecord?.company_id ? { company_id: { [Op.in]: [chatRecord.company_id, null] } } : {}),
-                },
-              });
-
-              if (autoTemplates.length > 0) {
-                const contactPhone = jid.replace(/@.+/, '');
-                let contact = null;
-                try { contact = await Contact.findOne({ where: { phone: contactPhone } }); } catch (_) {}
-
-                let conversation = null;
-                if (contact) {
-                  try { conversation = await Conversation.findOne({ where: { contact_id: contact.id }, order: [['updated_at', 'DESC']] }); } catch (_) {}
-                }
-
-                const allCollected = { ...(activeReq.collected_fields || {}), ...collected };
-
-                for (const mt of autoTemplates) {
-                  const result = await mergeService.autoMerge(mt, {
-                    contact,
-                    conversation,
-                    collectedFields: allCollected,
-                  });
-
-                  io?.to('agents').emit('merge:auto-complete', {
-                    requestId: activeReq.id,
-                    templateId: mt.id,
-                    templateNombre: mt.nombre,
-                    resultado: result.resultado,
-                    variablesSinValor: result.variablesSinValor,
-                    jid,
-                    sessionId,
-                    companyId: chatRecord?.company_id,
-                  });
-                }
-                logger.info(`Auto-merge completado para ${jid}: ${autoTemplates.length} plantilla(s)`);
-              }
-            } catch (mergeErr) {
-              logger.warn(`Auto-merge falló para ${jid}: ${mergeErr.message}`);
-            }
-
-            // Responder al cliente — whatsappService envía este texto
-            return {
-              handled: true,
-              reply: 'Gracias, ya tenemos todos los datos. Un asesor lo revisará y te enviará el documento en breve.',
-            };
+            lines.push('');
+            lines.push('¿Todo está correcto? Responde *sí* para confirmar o *cancelar* para empezar de nuevo.');
+            return { handled: true, reply: lines.join('\n') };
           }
         }
         // idx fuera de rango (no debería pasar)
@@ -704,6 +643,88 @@ class ChatbotService {
     }
   }
 
+  // ─── Genera el DOCX a partir de los campos recopilados ────────────────────
+  async _generateDocument(activeReq, tpl, collected, jid, chatRecord, io) {
+    try {
+      const path = require('path');
+      const fs   = require('fs');
+      const { TEMPLATE_DIR, GENERATED_DIR } = require('../middleware/uploadTemplate');
+      const PizZip        = require('pizzip');
+      const Docxtemplater = require('docxtemplater');
+      const models        = require('../models');
+      const Contact       = models.Contact;
+
+      const today = new Date();
+      const dateStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+      const contactPhone = jid.replace(/@.+/, '');
+      let contactName = chatRecord?.contact_name || '';
+      try {
+        const contact = await Contact.findOne({ where: { phone: contactPhone } });
+        if (contact) contactName = contact.name || contactName;
+      } catch (_) {}
+
+      const AUTO_RESOLVE = {
+        'contact.name':  contactName,
+        'contact.phone': contactPhone,
+        'date.today':    dateStr,
+      };
+
+      const values = {};
+      for (const f of (tpl.fields || [])) {
+        if (f.source === 'manual') {
+          values[f.key] = collected[f.key] ?? f.default_value ?? '';
+        } else if (f.source && AUTO_RESOLVE[f.source] !== undefined) {
+          values[f.key] = AUTO_RESOLVE[f.source];
+        } else {
+          values[f.key] = f.default_value ?? '';
+        }
+      }
+
+      const tplPath = path.join(TEMPLATE_DIR, tpl.filename_stored);
+      if (!fs.existsSync(tplPath)) {
+        logger.error(`Archivo de plantilla no encontrado: ${tplPath}`);
+        await activeReq.update({ status: 'rejected' });
+        return { handled: true, reply: 'Hubo un error al preparar tu documento. Por favor contacta a un asesor.' };
+      }
+
+      const content = fs.readFileSync(tplPath);
+      const zip     = new PizZip(content);
+      const doc     = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks:    true,
+        nullGetter:    () => '',
+      });
+      doc.render(values);
+      const buf     = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+      const outName = `${Date.now()}_${tpl.filename_stored}`;
+      if (!fs.existsSync(GENERATED_DIR)) fs.mkdirSync(GENERATED_DIR, { recursive: true });
+      fs.writeFileSync(path.join(GENERATED_DIR, outName), buf);
+
+      await activeReq.update({ status: 'ready', generated_file_path: outName });
+      logger.info(`📄 Documento generado para ${jid}: ${outName}`);
+
+      io?.to('agents').emit('document:ready', {
+        requestId:    activeReq.id,
+        jid,
+        sessionId:    activeReq.session_id,
+        templateName: tpl.name,
+        companyId:    chatRecord?.company_id,
+      });
+
+      return {
+        handled: true,
+        reply: '✅ ¡Perfecto! Tu documento está listo. Un asesor lo revisará y te lo enviará en breve.',
+      };
+    } catch (genErr) {
+      logger.error('Error generando documento:', genErr.message, genErr.stack);
+      await activeReq.update({ status: 'rejected' });
+      return {
+        handled: true,
+        reply: 'Ocurrió un error al generar tu documento. Por favor contacta a un asesor para continuar.',
+      };
+    }
+  }
+
   // ─── Bot para WhatsApp (Baileys): con memoria y modo genérico/personalizado ──
   async handleWhatsappMessage(sessionId, jid, body, chatRecord) {
     try {
@@ -754,7 +775,7 @@ class ChatbotService {
       const history = this.normalizeHistory(rawHistory);
 
       // 4. Resolver tokens de catálogos + contexto de calendario
-      let resolvedPrompt = await this.resolvePromptCatalogs(systemPrompt);
+      let resolvedPrompt = await this.resolvePromptCatalogs(systemPrompt, chatRecord?.company_id);
       const calendarCtx = await this.buildCalendarContext(sessionId);
       if (calendarCtx) resolvedPrompt += '\n\n' + calendarCtx;
 

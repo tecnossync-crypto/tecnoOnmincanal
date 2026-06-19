@@ -59,6 +59,16 @@ const Company = sequelize.define('company', {
     allowNull:    true,
     defaultValue: null,
   },
+  outlook_tokens: {
+    type:         DataTypes.JSONB,
+    allowNull:    true,
+    defaultValue: null,
+  },
+  google_calendar_tokens: {
+    type:         DataTypes.JSONB,
+    allowNull:    true,
+    defaultValue: null,
+  },
   active_features: {
     type: DataTypes.JSONB,
     allowNull: false,
@@ -93,6 +103,27 @@ const Company = sequelize.define('company', {
       config_widgets:         true,
       config_plugins:         true,
     },
+  },
+  plan: {
+    type:         DataTypes.STRING(50),
+    allowNull:    false,
+    defaultValue: 'basic',
+  },
+  plan_limits: {
+    type:         DataTypes.JSONB,
+    allowNull:    false,
+    defaultValue: {
+      max_operators:           5,
+      max_conversations_month: 1000,
+      max_storage_mb:          500,
+      max_campaigns_month:     10,
+      max_whatsapp_accounts:   2,
+    },
+  },
+  billing: {
+    type:         DataTypes.JSONB,
+    allowNull:    true,
+    defaultValue: null,
   },
 }, {
   tableName: 'company',

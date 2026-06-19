@@ -63,11 +63,17 @@ const BotFile = sequelize.define('bot_files', {
   sort_order: {
     type:         DataTypes.INTEGER,
     defaultValue: 0
+  },
+  company_id: {
+    type:      DataTypes.UUID,
+    allowNull: true,
+    comment:   'Empresa propietaria del archivo'
   }
 }, {
   indexes: [
     { fields: ['category'] },
-    { fields: ['is_active'] }
+    { fields: ['is_active'] },
+    { fields: ['company_id'] },
   ]
 });
 

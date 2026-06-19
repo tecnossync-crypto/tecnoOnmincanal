@@ -27,6 +27,11 @@ const appointmentCtrl         = require('../controllers/appointmentController');
 const templateCtrl            = require('../controllers/documentTemplateController');
 const docRequestCtrl          = require('../controllers/documentRequestController');
 const mergeTemplateCtrl       = require('../controllers/mergeTemplateController');
+const deployController        = require('../controllers/deployController');
+const outlookController       = require('../controllers/outlookController');
+const googleCalendarController = require('../controllers/googleCalendarController');
+const planController          = require('../controllers/planController');
+const revenueController       = require('../controllers/revenueController');
 const { upload: tplUpload }   = require('../middleware/uploadTemplate');
 const { handleCatalogUpload, CATALOG_DIR } = require('../middleware/uploadCatalog');
 
@@ -54,8 +59,15 @@ router.get('/stats', auth, requireRole('admin'), requireFeature('dashboard'), st
 router.post('/auth/login',           authController.login.bind(authController));
 router.post('/auth/logout',          auth, authController.logout.bind(authController));
 router.get ('/auth/me',              auth, authController.me.bind(authController));
-router.post('/auth/forgot-password', authController.forgotPassword.bind(authController));
-router.post('/auth/reset-password',  authController.resetPassword.bind(authController));
+router.post('/auth/forgot-password',         authController.forgotPassword.bind(authController));
+router.post('/auth/reset-password',          authController.resetPassword.bind(authController));
+router.post('/auth/request-email-change',    auth, authController.requestEmailChange.bind(authController));
+router.get ('/auth/confirm-email-change/:token', authController.confirmEmailChange.bind(authController));
+router.put ('/auth/change-password',             auth, authController.changeOwnPassword.bind(authController));
+router.post('/auth/verify-login-otp',                 authController.verifyLoginOTP.bind(authController));
+router.post('/auth/resend-login-otp',                 authController.resendLoginOTP.bind(authController));
+router.post('/auth/verify-email',                     authController.verifyEmail.bind(authController));
+router.post('/auth/resend-verification',              authController.resendVerification.bind(authController));
 
 // Registro: admin crea cuentas para su empresa; superadmin puede crear en cualquier empresa
 router.post('/auth/register', auth, requireRole('admin'), authController.register.bind(authController));
@@ -246,27 +258,32 @@ router.patch('/contacts/:id', auth, companyScope, async (req, res) => {
 // ─────────────────────────────────────
 // CATÁLOGOS DEL BOT
 // ─────────────────────────────────────
-router.get('/bot-catalogs', auth, requireFeature('bot_catalogs'), async (req, res) => {
+router.get('/bot-catalogs', auth, companyScope, requireFeature('bot_catalogs'), async (req, res) => {
   try {
-    const catalogs = await BotCatalog.findAll({ order: [['created_at', 'DESC']] });
+    const catalogs = await BotCatalog.findAll({
+      where: req.companyFilter || {},
+      order: [['created_at', 'DESC']],
+    });
     res.json({ success: true, data: catalogs });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-router.post('/bot-catalogs', auth, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
+router.post('/bot-catalogs', auth, companyScope, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
   try {
     const { nombre, identificador, tipo, descripcion, contenido } = req.body;
     if (!nombre?.trim())        return res.status(400).json({ success: false, message: 'El nombre es obligatorio' });
     if (!identificador?.trim()) return res.status(400).json({ success: false, message: 'El identificador es obligatorio' });
-    const slug = identificador.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const slug       = identificador.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const company_id = req.user?.role === 'superadmin' ? null : req.user?.company_id;
     const catalog = await BotCatalog.create({
       nombre: nombre.trim(),
       identificador: slug,
       tipo:          tipo || 'general',
       descripcion:   descripcion?.trim() || null,
-      contenido:     contenido || ''
+      contenido:     contenido || '',
+      company_id,
     });
     res.json({ success: true, data: catalog });
   } catch (error) {
@@ -277,9 +294,9 @@ router.post('/bot-catalogs', auth, requireRole('admin'), requireFeature('bot_cat
   }
 });
 
-router.put('/bot-catalogs/:id', auth, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
+router.put('/bot-catalogs/:id', auth, companyScope, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
   try {
-    const catalog = await BotCatalog.findByPk(req.params.id);
+    const catalog = await BotCatalog.findOne({ where: { id: req.params.id, ...(req.companyFilter || {}) } });
     if (!catalog) return res.status(404).json({ success: false, message: 'Catálogo no encontrado' });
     const updates = {};
     const { nombre, identificador, tipo, descripcion, contenido, activo } = req.body;
@@ -301,14 +318,14 @@ router.put('/bot-catalogs/:id', auth, requireRole('admin'), requireFeature('bot_
 
 // Subir archivo a un catálogo (POST crea/reemplaza, DELETE quita el archivo)
 router.post('/bot-catalogs/:id/file',
-  auth, requireRole('admin'), requireFeature('bot_catalogs'),
+  auth, companyScope, requireRole('admin'), requireFeature('bot_catalogs'),
   handleCatalogUpload,
   async (req, res) => {
     const pathMod = require('path');
     const fs      = require('fs');
     const logger  = require('../config/logger');
     try {
-      const catalog = await BotCatalog.findByPk(req.params.id);
+      const catalog = await BotCatalog.findOne({ where: { id: req.params.id, ...(req.companyFilter || {}) } });
       if (!catalog) return res.status(404).json({ success: false, message: 'Catálogo no encontrado' });
       if (!req.file)  return res.status(400).json({ success: false, message: 'Archivo requerido' });
 
@@ -350,11 +367,11 @@ router.post('/bot-catalogs/:id/file',
   }
 );
 
-router.delete('/bot-catalogs/:id/file', auth, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
+router.delete('/bot-catalogs/:id/file', auth, companyScope, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
   try {
     const pathMod = require('path');
     const fs      = require('fs');
-    const catalog = await BotCatalog.findByPk(req.params.id);
+    const catalog = await BotCatalog.findOne({ where: { id: req.params.id, ...(req.companyFilter || {}) } });
     if (!catalog) return res.status(404).json({ success: false, message: 'Catálogo no encontrado' });
     if (catalog.archivo_url) {
       const filePath = pathMod.join(__dirname, '../..', catalog.archivo_url);
@@ -367,11 +384,11 @@ router.delete('/bot-catalogs/:id/file', auth, requireRole('admin'), requireFeatu
   }
 });
 
-router.delete('/bot-catalogs/:id', auth, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
+router.delete('/bot-catalogs/:id', auth, companyScope, requireRole('admin'), requireFeature('bot_catalogs'), async (req, res) => {
   try {
     const pathMod = require('path');
     const fs      = require('fs');
-    const catalog = await BotCatalog.findByPk(req.params.id);
+    const catalog = await BotCatalog.findOne({ where: { id: req.params.id, ...(req.companyFilter || {}) } });
     if (!catalog) return res.status(404).json({ success: false, message: 'Catálogo no encontrado' });
     // Eliminar archivo físico asociado
     if (catalog.archivo_url) {
@@ -529,6 +546,49 @@ router.post  ('/merge-templates/auto-merge/:conversationId', auth, requireFeatur
 router.use('/vouchers', auth, requireFeature('vouchers'), voucherRoutes);
 console.log('✅ WhatsApp routes cargadas');
 router.use('/whatsapp', whatsappRoutes);
+// ─────────────────────────────────────
+// OUTLOOK CALENDAR
+// ─────────────────────────────────────
+router.get ('/outlook/status',     auth, requireFeature('appointments'), outlookController.status);
+router.get ('/outlook/connect',    auth, requireRole('admin'), requireFeature('appointments'), outlookController.connect);
+router.get ('/outlook/callback',   outlookController.callback);   // sin auth — viene de Microsoft
+router.delete('/outlook/disconnect', auth, requireRole('admin'), requireFeature('appointments'), outlookController.disconnect);
+router.get ('/outlook/events',     auth, requireFeature('appointments'), outlookController.getEvents);
+
+// ─────────────────────────────────────
+// GOOGLE CALENDAR
+// ─────────────────────────────────────
+router.get   ('/gcal/status',     auth, requireFeature('appointments'), googleCalendarController.status);
+router.get   ('/gcal/connect',    auth, requireRole('admin'), requireFeature('appointments'), googleCalendarController.connect);
+router.get   ('/gcal/callback',   googleCalendarController.callback);  // sin auth — viene de Google
+router.delete('/gcal/disconnect', auth, requireRole('admin'), requireFeature('appointments'), googleCalendarController.disconnect);
+router.get   ('/gcal/events',     auth, requireFeature('appointments'), googleCalendarController.getEvents);
+
+// ─────────────────────────────────────
+// PLANES Y FACTURACIÓN (solo superadmin)
+// ─────────────────────────────────────
+router.get('/plans/presets',               auth, requireSuperAdmin, planController.getPresets);
+router.get('/plans/overview',              auth, requireSuperAdmin, planController.getOverview);
+router.get('/plans/billing-alerts',        auth, requireSuperAdmin, planController.getBillingAlerts);
+router.get('/plans/company/:id',           auth, requireSuperAdmin, planController.getCompanyPlan);
+router.put('/plans/company/:id',           auth, requireSuperAdmin, planController.updateCompanyPlan);
+
+// ─────────────────────────────────────
+// INGRESOS / REVENUE (solo superadmin — panel exclusivo dueños)
+// ─────────────────────────────────────
+router.get('/revenue/summary',             auth, requireSuperAdmin, revenueController.getSummary);
+router.get('/revenue/companies',           auth, requireSuperAdmin, revenueController.getCompanies);
+router.put('/revenue/companies/:id/billing', auth, requireSuperAdmin, revenueController.updateBilling);
+router.get('/revenue/admins',              auth, requireSuperAdmin, revenueController.getAdmins);
+
+// ─────────────────────────────────────
+// DEPLOY / CI-CD (solo superadmin)
+// ─────────────────────────────────────
+router.get ('/deploy/status',        auth, requireSuperAdmin, deployController.getStatus);
+router.post('/deploy/trigger-qa',    auth, requireSuperAdmin, deployController.triggerQA);
+router.post('/deploy/trigger-prod',  auth, requireSuperAdmin, deployController.triggerProd);
+router.get ('/deploy/run/:runId/logs-url', auth, requireSuperAdmin, deployController.getLogsUrl);
+
 // ─────────────────────────────────────
 // EMPRESA
 // ─────────────────────────────────────

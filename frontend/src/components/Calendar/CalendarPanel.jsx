@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, Clock, User, Phone, FileText, Check, Trash2, CalendarDays, Settings2, Bot } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Clock, User, Phone, FileText, Check, Trash2, CalendarDays, Settings2, Bot, Link, Link2Off } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -439,6 +439,84 @@ function DayPanel({ dateStr, appointments, onNew, onEdit, onDelete, onStatusChan
   );
 }
 
+// ─── Outlook status badge ─────────────────────────────────────────────────
+function OutlookBadge({ status, onConnect, onDisconnect, connecting }) {
+  if (!status) return null;
+  if (status.connected) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+          <span className="w-2 h-2 rounded-full bg-blue-500" />
+          <span className="text-xs font-medium text-blue-700 dark:text-blue-300 truncate max-w-[140px]">
+            Outlook: {status.email}
+          </span>
+        </div>
+        <button
+          onClick={onDisconnect}
+          title="Desconectar Outlook"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors"
+        >
+          <Link2Off size={13} />
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={onConnect}
+      disabled={connecting}
+      className="flex items-center gap-2 px-3 py-1.5 border border-blue-300 text-blue-600 dark:text-blue-400 text-xs font-semibold rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+    >
+      <Link size={13} />
+      {connecting ? 'Conectando...' : 'Conectar Outlook'}
+    </button>
+  );
+}
+
+// ─── Google Calendar status badge ─────────────────────────────────────────
+function GoogleCalendarBadge({ status, onConnect, onDisconnect, connecting }) {
+  if (!status) return null;
+  if (status.connected) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+          <svg viewBox="0 0 24 24" width="12" height="12" className="flex-shrink-0">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          <span className="text-xs font-medium text-red-700 dark:text-red-300 truncate max-w-[140px]">
+            GCal: {status.email}
+          </span>
+        </div>
+        <button
+          onClick={onDisconnect}
+          title="Desconectar Google Calendar"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors"
+        >
+          <Link2Off size={13} />
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={onConnect}
+      disabled={connecting}
+      className="flex items-center gap-2 px-3 py-1.5 border border-red-300 text-red-600 dark:text-red-400 text-xs font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+    >
+      <svg viewBox="0 0 24 24" width="13" height="13">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      {connecting ? 'Conectando...' : 'Conectar Google Calendar'}
+    </button>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────
 export default function CalendarPanel() {
   const today = new Date();
@@ -448,10 +526,99 @@ export default function CalendarPanel() {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [monthAppts,   setMonthAppts]   = useState({}); // { 'YYYY-MM-DD': [] }
   const [dayAppts,     setDayAppts]     = useState([]);
+  const [outlookAppts, setOutlookAppts] = useState([]); // eventos de Outlook del día
   const [modal,        setModal]        = useState(null); // null | 'new' | appointment obj
   const [schedule,     setSchedule]     = useState(DEFAULT_SCHED);
   const [savingSched,  setSavingSched]  = useState(false);
-  const [loadingMonth, setLoadingMonth] = useState(false);
+  const [loadingMonth,  setLoadingMonth]  = useState(false);
+  const [outlookStatus, setOutlookStatus] = useState(null);
+  const [connectingOL,  setConnectingOL]  = useState(false);
+  const [gcalStatus,    setGcalStatus]    = useState(null);
+  const [gcalAppts,     setGcalAppts]     = useState([]);
+  const [connectingGCal, setConnectingGCal] = useState(false);
+  const [confirmModal,  setConfirmModal]  = useState(null); // { msg, onConfirm }
+
+  // Revisar si llegó de callback de Outlook o Google Calendar
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const olResult = params.get('outlook');
+    const gcResult = params.get('gcal');
+    if (olResult === 'connected') {
+      toast.success('Outlook Calendar conectado correctamente');
+      window.history.replaceState({}, '', window.location.pathname);
+      api.get('/outlook/status').then(r => setOutlookStatus(r.data || null)).catch(() => {});
+    } else if (olResult === 'error') {
+      toast.error('Error conectando Outlook: ' + (params.get('msg') || 'desconocido'));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (gcResult === 'connected') {
+      toast.success('Google Calendar conectado correctamente');
+      window.history.replaceState({}, '', window.location.pathname);
+      api.get('/gcal/status').then(r => setGcalStatus(r.data?.data || r.data || null)).catch(() => {});
+    } else if (gcResult === 'error') {
+      toast.error('Error conectando Google Calendar');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  // Cargar estado de Outlook y Google Calendar
+  useEffect(() => {
+    api.get('/outlook/status')
+      .then(r => setOutlookStatus(r.data || null))
+      .catch(() => {});
+    api.get('/gcal/status')
+      .then(r => setGcalStatus(r.data?.data || r.data || null))
+      .catch(() => {});
+  }, []);
+
+  const handleConnectOutlook = async () => {
+    setConnectingOL(true);
+    try {
+      const res = await api.get('/outlook/connect');
+      window.location.href = res.data.url;
+    } catch (err) {
+      toast.error('No se pudo iniciar la conexión con Outlook');
+      setConnectingOL(false);
+    }
+  };
+
+  const handleDisconnectOutlook = () => {
+    setConfirmModal({
+      msg: '¿Desconectar la cuenta de Outlook?',
+      onConfirm: async () => {
+        try {
+          await api.delete('/outlook/disconnect');
+          setOutlookStatus({ connected: false });
+          setOutlookAppts([]);
+          toast.success('Outlook desconectado');
+        } catch (err) {
+          toast.error('Error desconectando Outlook');
+        }
+      },
+    });
+  };
+
+  const handleConnectGCal = () => {
+    setConnectingGCal(true);
+    const base = import.meta.env.VITE_API_URL || '/api';
+    window.location.href = `${base}/gcal/connect`;
+  };
+
+  const handleDisconnectGCal = () => {
+    setConfirmModal({
+      msg: '¿Desconectar Google Calendar?',
+      onConfirm: async () => {
+        try {
+          await api.delete('/gcal/disconnect');
+          setGcalStatus({ connected: false });
+          setGcalAppts([]);
+          toast.success('Google Calendar desconectado');
+        } catch (err) {
+          toast.error('Error desconectando Google Calendar');
+        }
+      },
+    });
+  };
 
   // ── Fetch month appointments ───────────────────────────
   const fetchMonth = useCallback(async () => {
@@ -492,6 +659,16 @@ export default function CalendarPanel() {
   const handleDayClick = (ds) => {
     setSelectedDate(ds);
     setDayAppts(monthAppts[ds] || []);
+    if (outlookStatus?.connected) {
+      api.get(`/outlook/events?start=${ds}&end=${ds}`)
+        .then(r => setOutlookAppts(r.data || []))
+        .catch(() => setOutlookAppts([]));
+    }
+    if (gcalStatus?.connected) {
+      api.get(`/gcal/events?startDate=${ds}&endDate=${ds}`)
+        .then(r => setGcalAppts(r.data?.data || r.data || []))
+        .catch(() => setGcalAppts([]));
+    }
   };
 
   // ── Status change inline ───────────────────────────────
@@ -505,15 +682,19 @@ export default function CalendarPanel() {
   };
 
   // ── Delete ─────────────────────────────────────────────
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar esta cita?')) return;
-    try {
-      await api.delete(`/appointments/${id}`);
-      toast.success('Cita eliminada');
-      await fetchMonth();
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message);
-    }
+  const handleDelete = (id) => {
+    setConfirmModal({
+      msg: '¿Eliminar esta cita?',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/appointments/${id}`);
+          toast.success('Cita eliminada');
+          await fetchMonth();
+        } catch (err) {
+          toast.error(err.response?.data?.message || err.message);
+        }
+      },
+    });
   };
 
   // ── Save schedule ──────────────────────────────────────
@@ -556,13 +737,27 @@ export default function CalendarPanel() {
           <h1 className="text-lg font-bold text-slate-800 dark:text-white">Calendario de Citas</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">Gestiona citas y disponibilidad</p>
         </div>
-        <button
-          onClick={() => setModal('new')}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
-        >
-          <Plus size={15} />
-          Nueva cita
-        </button>
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          <OutlookBadge
+            status={outlookStatus}
+            onConnect={handleConnectOutlook}
+            onDisconnect={handleDisconnectOutlook}
+            connecting={connectingOL}
+          />
+          <GoogleCalendarBadge
+            status={gcalStatus}
+            onConnect={handleConnectGCal}
+            onDisconnect={handleDisconnectGCal}
+            connecting={connectingGCal}
+          />
+          <button
+            onClick={() => setModal('new')}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <Plus size={15} />
+            Nueva cita
+          </button>
+        </div>
       </div>
 
       {/* ── Tabs ──────────────────────────────────────── */}
@@ -664,6 +859,68 @@ export default function CalendarPanel() {
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
             />
+            {/* Eventos de Outlook */}
+            {outlookStatus?.connected && outlookAppts.length > 0 && (
+              <div className="border-t border-blue-100 dark:border-blue-900/30 p-3">
+                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  Outlook Calendar
+                </p>
+                <div className="space-y-1.5">
+                  {outlookAppts.map(ev => {
+                    const start = ev.start?.dateTime
+                      ? new Date(ev.start.dateTime).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' })
+                      : '';
+                    return (
+                      <div key={ev.id} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          {start && <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{start}</span>}
+                          {ev.isAllDay && <span className="text-xs text-blue-500">Todo el día</span>}
+                        </div>
+                        <p className="text-xs font-medium text-blue-800 dark:text-blue-200 truncate">{ev.subject}</p>
+                        {ev.location?.displayName && (
+                          <p className="text-xs text-blue-500 truncate">{ev.location.displayName}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Eventos de Google Calendar */}
+            {gcalStatus?.connected && gcalAppts.length > 0 && (
+              <div className="border-t border-red-100 dark:border-red-900/30 p-3">
+                <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1.5">
+                  <svg viewBox="0 0 24 24" width="10" height="10" className="flex-shrink-0">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Google Calendar
+                </p>
+                <div className="space-y-1.5">
+                  {gcalAppts.map(ev => {
+                    const start = ev.start?.dateTime
+                      ? new Date(ev.start.dateTime).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' })
+                      : '';
+                    return (
+                      <div key={ev.id} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          {start && <span className="text-xs font-semibold text-red-700 dark:text-red-300">{start}</span>}
+                          {ev.start?.date && !ev.start?.dateTime && <span className="text-xs text-red-500">Todo el día</span>}
+                        </div>
+                        <p className="text-xs font-medium text-red-800 dark:text-red-200 truncate">{ev.summary}</p>
+                        {ev.location && (
+                          <p className="text-xs text-red-500 truncate">{ev.location}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -675,7 +932,7 @@ export default function CalendarPanel() {
         />
       )}
 
-      {/* ── Modal ─────────────────────────────────────── */}
+      {/* ── Modal de cita ─────────────────────────────── */}
       {modal && (
         <AppointmentModal
           appointment={modal === 'new' ? null : modal}
@@ -684,6 +941,29 @@ export default function CalendarPanel() {
           onSave={fetchMonth}
           onClose={() => setModal(null)}
         />
+      )}
+
+      {/* ── Modal de confirmación (reemplaza window.confirm) ── */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 text-center">
+            <p className="text-sm font-medium text-slate-800 mb-5">{confirmModal.msg}</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setConfirmModal(null); confirmModal.onConfirm(); }}
+                className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

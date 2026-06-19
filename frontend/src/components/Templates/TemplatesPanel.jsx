@@ -17,12 +17,13 @@ function RequestsSection() {
   const [requests,  setRequests]  = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [sending,   setSending]   = useState(null);
+  const [expanded,  setExpanded]  = useState({});
 
   const fetchRequests = async () => {
     setLoading(true);
     try {
       const res = await api.get('/document-requests');
-      setRequests(res.data?.data || []);
+      setRequests(res.data || []);
     } catch { toast.error('Error cargando solicitudes'); }
     finally   { setLoading(false); }
   };
@@ -107,58 +108,90 @@ function RequestsSection() {
             const jidShort = req.jid?.replace(/@.+/, '') || '—';
             const ts  = req.created_at ? new Date(req.created_at).toLocaleString('es-DO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
             return (
-              <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
-                {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                  <User size={15} className="text-indigo-500" />
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-slate-800 truncate">{jidShort}</span>
-                    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${st.bg} ${st.text} ${st.border}`}>
-                      {st.icon} {st.label}
-                    </span>
+              <div key={req.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="p-4 flex items-center gap-4">
+                  {/* Avatar */}
+                  <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                    <User size={15} className="text-indigo-500" />
                   </div>
-                  <p className="text-xs text-slate-500 truncate mt-0.5">
-                    {req.template?.name || 'Documento'} · {ts}
-                  </p>
-                  {req.status === 'collecting' && (() => {
-                    const fields   = (req.template?.fields || []).filter(f => f.source === 'manual');
-                    const done     = req.current_field_index || 0;
-                    const total    = fields.length;
-                    return (
-                      <p className="text-xs text-amber-600 mt-0.5">Campo {done} de {total} recopilado{done !== 1 ? 's' : ''}</p>
-                    );
-                  })()}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-800 truncate">{jidShort}</span>
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${st.bg} ${st.text} ${st.border}`}>
+                        {st.icon} {st.label}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                      {req.template?.name || 'Documento'} · {ts}
+                    </p>
+                    {req.status === 'collecting' && (() => {
+                      const fields = (req.template?.fields || []).filter(f => f.source === 'manual');
+                      const done   = req.current_field_index || 0;
+                      const total  = fields.length;
+                      const waiting = req.collected_fields?.__awaiting_confirmation;
+                      return waiting
+                        ? <p className="text-xs text-blue-600 mt-0.5">Esperando confirmación del cliente</p>
+                        : <p className="text-xs text-amber-600 mt-0.5">Campo {done} de {total} recopilado{done !== 1 ? 's' : ''}</p>;
+                    })()}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Ver datos recopilados */}
+                    {req.status === 'ready' && Object.keys(req.collected_fields || {}).filter(k => k !== '__awaiting_confirmation').length > 0 && (
+                      <button
+                        onClick={() => setExpanded(prev => ({ ...prev, [req.id]: !prev[req.id] }))}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition-colors"
+                      >
+                        {expanded[req.id] ? <ChevronDown size={12} /> : <ChevronRight size={12} />} Datos
+                      </button>
+                    )}
+                    {req.status === 'ready' && (
+                      <>
+                        <button onClick={() => handleDownload(req)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+                          <Download size={12} /> Ver
+                        </button>
+                        <button onClick={() => handleSend(req)} disabled={sending === req.id}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors">
+                          <Send size={12} /> {sending === req.id ? 'Enviando…' : 'Enviar'}
+                        </button>
+                        <button onClick={() => handleReject(req)}
+                          className="w-7 h-7 flex items-center justify-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <X size={13} />
+                        </button>
+                      </>
+                    )}
+                    {req.status === 'sent' && (
+                      <span className="text-xs text-slate-400 italic">Enviado</span>
+                    )}
+                    {req.status === 'rejected' && (
+                      <span className="text-xs text-red-300 italic">Cancelado</span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {req.status === 'ready' && (
-                    <>
-                      <button onClick={() => handleDownload(req)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
-                        <Download size={12} /> Ver
-                      </button>
-                      <button onClick={() => handleSend(req)} disabled={sending === req.id}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors">
-                        <Send size={12} /> {sending === req.id ? 'Enviando…' : 'Enviar'}
-                      </button>
-                      <button onClick={() => handleReject(req)}
-                        className="w-7 h-7 flex items-center justify-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                        <X size={13} />
-                      </button>
-                    </>
-                  )}
-                  {req.status === 'sent' && (
-                    <span className="text-xs text-slate-400 italic">Enviado</span>
-                  )}
-                  {req.status === 'rejected' && (
-                    <span className="text-xs text-red-300 italic">Cancelado</span>
-                  )}
-                </div>
+                {/* Datos recopilados expandibles */}
+                {expanded[req.id] && (
+                  <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold text-slate-500 mb-2">Datos recopilados del cliente</p>
+                    <div className="space-y-1">
+                      {Object.entries(req.collected_fields || {})
+                        .filter(([k]) => k !== '__awaiting_confirmation')
+                        .map(([key, val]) => {
+                          const fieldDef = (req.template?.fields || []).find(f => f.key === key);
+                          return (
+                            <div key={key} className="flex items-start gap-2 text-xs">
+                              <span className="text-slate-500 font-medium min-w-[120px]">{fieldDef?.label || key}:</span>
+                              <span className="text-slate-700">{val || '—'}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

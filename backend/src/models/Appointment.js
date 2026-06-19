@@ -15,6 +15,8 @@ const Appointment = sequelize.define('appointments', {
   notes:            { type: DataTypes.TEXT, allowNull: true },
   assigned_to:      { type: DataTypes.UUID, allowNull: true },
   created_by:       { type: DataTypes.UUID, allowNull: true },
+  outlook_event_id: { type: DataTypes.STRING(500), allowNull: true },
+  google_event_id:  { type: DataTypes.STRING(500), allowNull: true },
 }, {
   timestamps: true,
   createdAt: 'created_at',

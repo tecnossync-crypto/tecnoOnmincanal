@@ -1,6 +1,6 @@
 // frontend/src/components/Dashboard/Dashboard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
 
 const INTERVALOS = [
   { label: 'Hoy',             value: 'hoy'       },
@@ -55,6 +55,25 @@ const HorasChart = ({ data }) => {
     </div>
   );
 };
+
+function formatOnlineTime(minutes) {
+  if (!minutes || minutes <= 0) return '—';
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+const OnlineTime = ({ minutes, isOnline }) => (
+  <span style={{
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    fontSize: 11, fontWeight: 600,
+    color: isOnline ? '#22c55e' : 'var(--db-text-muted)',
+  }}>
+    {isOnline && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse 2s ease-in-out infinite' }} />}
+    {formatOnlineTime(minutes)}
+  </span>
+);
 
 const Skeleton = () => (
   <div style={{ padding: 24 }}>
@@ -234,7 +253,7 @@ export default function Dashboard() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: '0.5px solid var(--db-card-border)' }}>
-                  {['Asesor','Rol','Estado','Chats','Convertidos','Tasa'].map(h => (
+                  {['Asesor','Rol','Estado','T. en línea','Chats','Convertidos','Tasa'].map(h => (
                     <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--db-text-faint)', fontWeight: 500, fontSize: 11 }}>{h}</th>
                   ))}
                 </tr>
@@ -261,6 +280,9 @@ export default function Dashboard() {
                         <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: a.online ? 'rgba(34,197,94,0.1)' : 'rgba(71,85,105,0.3)', color: a.online ? '#22c55e' : 'var(--db-text-muted)' }}>
                           {a.online ? 'En línea' : 'Offline'}
                         </span>
+                      </td>
+                      <td style={{ padding: '10px 8px' }}>
+                        <OnlineTime minutes={a.total_online_minutes} isOnline={a.online} />
                       </td>
                       <td style={{ padding: '10px 8px', color: 'var(--db-text-strong)', fontWeight: 600 }}>{a.chats}</td>
                       <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: 600 }}>{a.convertidos}</td>

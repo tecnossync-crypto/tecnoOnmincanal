@@ -18,12 +18,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB
 
+const cf = (req) =>
+  req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+
 class BotFileController {
 
   async getAll(req, res) {
     try {
       const { category } = req.query;
-      const where = {};
+      const where = { ...cf(req) };
       if (category) where.category = category;
       const files = await BotFile.findAll({
         where,
@@ -41,6 +44,7 @@ class BotFileController {
       if (!file) return res.status(400).json({ success: false, message: 'Archivo requerido' });
 
       const { name, category, caption, trigger_rules, ai_can_send, sort_order } = req.body;
+      const company_id = req.user?.role === 'superadmin' ? null : req.user?.company_id;
 
       const botFile = await BotFile.create({
         name:          name || file.originalname,
@@ -52,7 +56,8 @@ class BotFileController {
         caption:       caption || '',
         trigger_rules: trigger_rules ? JSON.parse(trigger_rules) : [],
         ai_can_send:   ai_can_send !== 'false',
-        sort_order:    sort_order || 0
+        sort_order:    sort_order || 0,
+        company_id,
       });
 
       logger.info(`✅ Archivo de bot creado: ${botFile.name}`);
@@ -64,7 +69,7 @@ class BotFileController {
 
   async update(req, res) {
     try {
-      const botFile = await BotFile.findByPk(req.params.id);
+      const botFile = await BotFile.findOne({ where: { id: req.params.id, ...cf(req) } });
       if (!botFile) return res.status(404).json({ success: false, message: 'No encontrado' });
 
       const updates = { ...req.body };
@@ -72,7 +77,6 @@ class BotFileController {
         updates.trigger_rules = JSON.parse(updates.trigger_rules);
       }
       if (req.file) {
-        // Eliminar archivo anterior
         const oldPath = path.join(__dirname, '../..', botFile.file_path);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
         updates.file_path  = `/uploads/bot-files/${req.file.filename}`;
@@ -90,7 +94,7 @@ class BotFileController {
 
   async remove(req, res) {
     try {
-      const botFile = await BotFile.findByPk(req.params.id);
+      const botFile = await BotFile.findOne({ where: { id: req.params.id, ...cf(req) } });
       if (!botFile) return res.status(404).json({ success: false, message: 'No encontrado' });
       const filePath = path.join(__dirname, '../..', botFile.file_path);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

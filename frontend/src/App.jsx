@@ -4,8 +4,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store';
 import Layout          from './components/Layout/Layout';
 import Login           from './components/Auth/Login';
-import ForgotPassword  from './components/Auth/ForgotPassword';
-import ResetPassword   from './components/Auth/ResetPassword';
+import ForgotPassword     from './components/Auth/ForgotPassword';
+import ResetPassword      from './components/Auth/ResetPassword';
+import ConfirmEmailChange from './components/Auth/ConfirmEmailChange';
+import VerifyEmail        from './components/Auth/VerifyEmail';
 import Inbox           from './components/Inbox/Inbox';
 import BotConfigPanel  from './components/BotConfig/BotConfigPanel';
 import CampaignsPanel  from './components/Campaigns/CampaignsPanel';
@@ -26,7 +28,7 @@ import CalendarPanel          from './components/Calendar/CalendarPanel';
 import TemplatesPanel         from './components/Templates/TemplatesPanel';
 import SuperAdminPanel        from './components/SuperAdmin/SuperAdminPanel';
 import GestionFuncionalidades from './components/SuperAdmin/GestionFuncionalidades';
-import MergeTemplatesPanel    from './components/MergeTemplates/MergeTemplatesPanel';
+
 
 
 const Placeholder = ({ name }) => (
@@ -69,8 +71,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login"                  element={<Login />} />
-      <Route path="/forgot-password"        element={<ForgotPassword />} />
-      <Route path="/reset-password/:token"  element={<ResetPassword />} />
+      <Route path="/forgot-password"             element={<ForgotPassword />} />
+      <Route path="/reset-password/:token"       element={<ResetPassword />} />
+      <Route path="/confirm-email-change/:token" element={<ConfirmEmailChange />} />
+      <Route path="/verify-email"                element={<VerifyEmail />} />
 
       <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route index element={<Navigate to="/inbox" replace />} />
@@ -84,7 +88,6 @@ export default function App() {
         <Route path="vouchers"   element={<VouchersPanel />} />
         <Route path="calendar"   element={<CalendarPanel />} />
         <Route path="templates"  element={<RoleRoute role="admin"><TemplatesPanel /></RoleRoute>} />
-        <Route path="merge-templates" element={<MergeTemplatesPanel />} />
 
          {/* ── Configuración ── */}
 

@@ -101,15 +101,20 @@ class MessageController {
     try {
       const { agentId } = req.body;
 
+      const companyId = req.user?.company_id;
       if (agentId) {
-        const agent = await User.findOne({ where: { id: agentId, role: 'agent', is_active: true } });
+        const agentWhere = { id: agentId, role: 'agent', is_active: true };
+        if (companyId) agentWhere.company_id = companyId;
+        const agent = await User.findOne({ where: agentWhere });
         if (!agent) {
           return res.status(400).json({ success: false, message: 'Agente no válido o inactivo.' });
         }
       }
 
       const conversation = await Conversation.findByPk(req.params.id);
-      if (!conversation) return res.status(404).json({ success: false, message: 'Conversación no encontrada.' });
+      if (!conversation || (companyId && conversation.company_id !== companyId)) {
+        return res.status(404).json({ success: false, message: 'Conversación no encontrada.' });
+      }
 
       await conversation.update({
         assigned_agent_id: agentId || null,
@@ -139,8 +144,11 @@ class MessageController {
   // POST /conversations/:id/resolve
   async resolveConversation(req, res) {
     try {
+      const companyId = req.user?.company_id;
       const conversation = await Conversation.findByPk(req.params.id);
-      if (!conversation) return res.status(404).json({ success: false, message: 'Conversación no encontrada.' });
+      if (!conversation || (companyId && conversation.company_id !== companyId)) {
+        return res.status(404).json({ success: false, message: 'Conversación no encontrada.' });
+      }
 
       await conversation.update({ status: 'resolved', assigned_agent_id: null });
       res.json({ success: true, data: conversation });

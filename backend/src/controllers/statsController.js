@@ -47,16 +47,18 @@ class StatsController {
       }
 
       const filtroFecha = { created_at: { [Op.between]: [fechaDesde, fechaHasta] } };
+      const companyFilter = req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
 
       // ── 1. Asesores con estado online ───────────────────
       const usuarios = await User.findAll({
+        where: companyFilter,
         attributes: { exclude: ['password_hash'] },
         order: [['created_at', 'ASC']],
       });
 
       // ── 2. Conversaciones por canal ─────────────────────
       const conversaciones = await Conversation.findAll({
-        where: filtroFecha,
+        where: { ...filtroFecha, ...companyFilter },
         attributes: ['channel', 'status', 'assigned_agent_id', 'created_at'],
       });
 
@@ -92,21 +94,30 @@ class StatsController {
       }));
 
       // ── 6. Chats por asesor ─────────────────────────────
+      const ahora2 = new Date();
       const asesores = usuarios
         .filter(u => u.role === 'agent' || u.role === 'admin')
         .map(u => {
           const chatsAsesor = conversaciones.filter(
             c => String(c.assigned_agent_id) === String(u.id)
           );
+          // Tiempo en línea: minutos acumulados + sesión activa actual
+          const sesionActualMin = (u.is_online && u.online_started_at)
+            ? Math.round((ahora2 - new Date(u.online_started_at)) / 60000)
+            : 0;
+          const totalMin = (u.total_online_minutes || 0) + sesionActualMin;
+
           return {
-            id:          u.id,
-            nombre:      u.name,
-            email:       u.email,
-            role:        u.role,
-            online:      u.is_active,
-            chats:       chatsAsesor.length,
-            convertidos: chatsAsesor.filter(c => c.status === 'resolved').length,
-            prospectos:  chatsAsesor.filter(c => c.status === 'open').length,
+            id:                    u.id,
+            nombre:                u.name,
+            email:                 u.email,
+            role:                  u.role,
+            online:                u.is_online,
+            chats:                 chatsAsesor.length,
+            convertidos:           chatsAsesor.filter(c => c.status === 'resolved').length,
+            prospectos:            chatsAsesor.filter(c => c.status === 'open').length,
+            online_started_at:     u.online_started_at || null,
+            total_online_minutes:  totalMin,
           };
         });
 
@@ -119,7 +130,7 @@ class StatsController {
         : 0;
 
       // ── 8. Total contactos ──────────────────────────────
-      const totalContactos = await Contact.count();
+      const totalContactos = await Contact.count({ where: companyFilter });
 
       // ── Respuesta ───────────────────────────────────────
       res.json({

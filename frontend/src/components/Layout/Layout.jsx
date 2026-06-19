@@ -11,6 +11,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore, useConversationStore, useThemeStore, useModuleStore } from '../../store';
 import { getSocket } from '../../services/socket';
 import { ModuleIcon } from '../Modules/ModulosConfig';
+import UserProfileModal from './UserProfileModal';
 import toast from 'react-hot-toast';
 
 // ─── Icono SVG inline para cada canal ───────────────────────
@@ -117,8 +118,7 @@ const ALL_NAV_ITEMS = [
   { to: '/inbox',      icon: <InboxIcon />,     label: 'Bandeja',        id: 'inbox',      feature: null,               roles: ['admin','agent','supervisor','superadmin'] },
   { to: '/calendar',   icon: <CalendarIcon />,  label: 'Calendario',     id: 'calendar',   feature: 'appointments',     roles: ['admin','agent','supervisor','superadmin'] },
   { to: '/templates',  icon: <TemplateIcon />,  label: 'Documentos',     id: 'templates',  feature: 'document_templates', roles: ['admin','superadmin'] },
-  { to: '/merge-templates', icon: <MergeIcon />, label: 'Plantillas Msg',  id: 'merge',      feature: 'merge_templates',  roles: ['admin','agent','supervisor','superadmin'] },
-  { to: '/campaigns',  icon: <CampaignIcon />,  label: 'Campañas',       id: 'campaigns',  feature: 'campaigns',        roles: ['admin','superadmin'] },
+{ to: '/campaigns',  icon: <CampaignIcon />,  label: 'Campañas',       id: 'campaigns',  feature: 'campaigns',        roles: ['admin','superadmin'] },
   { to: '/vouchers',   icon: <VoucherIcon />,   label: 'Comprobantes',   id: 'vouchers',   feature: 'vouchers',         roles: ['admin','agent','supervisor','superadmin'] },
   { to: '/config',     icon: <SettingsIcon />,  label: 'Configuración',  id: 'config',     feature: null,               roles: ['admin','superadmin'] },
   { to: '/dashboard',  icon: <DashboardIcon />, label: 'Dashboard',      id: 'dashboard',  feature: 'dashboard',        roles: ['admin','superadmin'] },
@@ -134,6 +134,7 @@ export default function Layout() {
   const { theme, toggleTheme }           = useThemeStore();
   const { modules, fetchModules }        = useModuleStore();
   const [sidebarOpen, setSidebarOpen]    = useState(false); // móvil
+  const [showProfile, setShowProfile]    = useState(false);
   const navigate = useNavigate();
 
   const role = user?.role || 'agent';
@@ -368,10 +369,14 @@ export default function Layout() {
 
         {/* ── Usuario + Logout ────────────────────────── */}
         <div className="flex items-center gap-2 p-2 border-t border-white/5">
-          {/* Avatar */}
-          <div className="ts-online-dot flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow shadow-indigo-500/30">
+          {/* Avatar — click abre perfil */}
+          <button
+            onClick={() => setShowProfile(true)}
+            className="ts-online-dot flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow shadow-indigo-500/30 hover:ring-2 hover:ring-violet-400 transition-all"
+            title="Mi perfil"
+          >
             {initials}
-          </div>
+          </button>
           {/* Info usuario */}
           <div className={`ts-sidebar-label flex-1 overflow-hidden ${sidebarOpen ? '' : 'hidden md:block'}`}>
             <p className="text-white text-xs font-semibold truncate">{user?.name || 'Usuario'}</p>
@@ -386,6 +391,7 @@ export default function Layout() {
             <LogoutIcon />
           </button>
         </div>
+        <UserProfileModal open={showProfile} onClose={() => setShowProfile(false)} user={user} />
       </aside>
 
       {/* ══════════════════════════════════════════════════

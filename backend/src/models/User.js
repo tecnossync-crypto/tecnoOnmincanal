@@ -52,7 +52,95 @@ const User = sequelize.define('users', {
   reset_token_expires: {
     type: DataTypes.DATE,
     allowNull: true
-  }
+  },
+  // Cambio de email pendiente de verificación
+  pending_email: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  email_change_token: {
+    type: DataTypes.STRING(200),
+    allowNull: true
+  },
+  email_change_expires: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  // Tracking de tiempo en línea
+  online_started_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  total_online_minutes: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  // ── Información personal extendida ──────────────────────────
+  cedula: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+  identificacion: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  genero: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+  },
+  fecha_nacimiento: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  fecha_incorporacion: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  idioma_preferido: {
+    type: DataTypes.STRING(10),
+    defaultValue: 'es',
+    allowNull: true,
+  },
+  zona_horaria: {
+    type: DataTypes.STRING(60),
+    defaultValue: 'America/Santo_Domingo',
+    allowNull: true,
+  },
+  movil: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+  },
+  telefono: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+  },
+  extension_telefono: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+  },
+  // ── OTP de inicio de sesión ──────────────────────────────────
+  login_otp: {
+    type: DataTypes.STRING(6),
+    allowNull: true,
+  },
+  login_otp_expires: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  // Verificación de email al crear cuenta
+  email_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+  },
+  email_verification_code: {
+    type: DataTypes.STRING(6),
+    allowNull: true,
+  },
+  email_verification_expires: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   hooks: {
     // Hash automático de contraseña antes de guardar

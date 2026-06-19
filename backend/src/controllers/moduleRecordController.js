@@ -2,12 +2,15 @@
 const { ModuleRecord, CustomModule } = require('../models');
 const { Op } = require('sequelize');
 
+const companyFilter = (req) =>
+  req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+
 const getAll = async (req, res) => {
   try {
     const { module_id, status, search, page = 1, limit = 50 } = req.query;
     if (!module_id) return res.status(400).json({ success: false, message: 'module_id requerido' });
 
-    const where = { module_id: Number(module_id) };
+    const where = { module_id: Number(module_id), ...companyFilter(req) };
     if (status) where.status = status;
     if (search) {
       where.contact_name = { [Op.iLike]: `%${search}%` };
@@ -42,7 +45,10 @@ const create = async (req, res) => {
     const { module_id, contact_name, contact_jid, session_id, conversation_id, data, notes } = req.body;
     if (!module_id) return res.status(400).json({ success: false, message: 'module_id requerido' });
 
-    const mod = await CustomModule.findByPk(module_id);
+    const modWhere = { id: Number(module_id) };
+    const cid = req.user?.role === 'superadmin' ? null : req.user?.company_id;
+    if (cid) modWhere.company_id = cid;
+    const mod = await CustomModule.findOne({ where: modWhere });
     if (!mod) return res.status(404).json({ success: false, message: 'Módulo no encontrado' });
 
     // Verificar límite diario
@@ -106,7 +112,7 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const record = await ModuleRecord.findByPk(req.params.id);
+    const record = await ModuleRecord.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!record) return res.status(404).json({ success: false, message: 'Registro no encontrado' });
     const { data, status, notes, contact_name } = req.body;
     await record.update({
@@ -123,7 +129,7 @@ const update = async (req, res) => {
 
 const remove = async (req, res) => {
   try {
-    const record = await ModuleRecord.findByPk(req.params.id);
+    const record = await ModuleRecord.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!record) return res.status(404).json({ success: false, message: 'Registro no encontrado' });
     await record.destroy();
     res.json({ success: true });
@@ -138,9 +144,11 @@ const getDailyStats = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const count = await ModuleRecord.count({
-      where: { module_id: Number(module_id), created_at: { [Op.gte]: today } }
+      where: { module_id: Number(module_id), created_at: { [Op.gte]: today }, ...companyFilter(req) }
     });
-    const mod = await CustomModule.findByPk(module_id);
+    const cidStat = req.user?.role === 'superadmin' ? null : req.user?.company_id;
+    const modWhereStat = cidStat ? { id: Number(module_id), company_id: cidStat } : { id: Number(module_id) };
+    const mod = await CustomModule.findOne({ where: modWhereStat });
     res.json({ success: true, data: { today_count: count, daily_limit: mod?.daily_limit || 0 } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

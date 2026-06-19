@@ -14,8 +14,7 @@ const BotCatalog = sequelize.define('bot_catalogs', {
   identificador: {
     type: DataTypes.STRING(80),
     allowNull: false,
-    unique: true,
-    comment: 'Slug único usado en el prompt: {{catalogo:identificador}}'
+    comment: 'Slug único por empresa usado en el prompt: {{catalogo:identificador}}'
   },
   descripcion: {
     type: DataTypes.STRING(300),
@@ -53,13 +52,19 @@ const BotCatalog = sequelize.define('bot_catalogs', {
     allowNull: true,
     defaultValue: null,
     comment: 'MIME type: application/pdf | image/jpeg | image/png | image/webp'
+  },
+  company_id: {
+    type:      DataTypes.UUID,
+    allowNull: true,
+    comment:   'Empresa propietaria del catálogo'
   }
 }, {
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   indexes: [
-    { unique: true, fields: ['identificador'] }
+    { unique: true, fields: ['identificador', 'company_id'] },
+    { fields: ['company_id'] },
   ]
 });
 

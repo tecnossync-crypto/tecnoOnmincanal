@@ -27,11 +27,16 @@ const Integration = sequelize.define('integrations', {
     type:      DataTypes.STRING,
     allowNull: true,
     comment:   'Nombre descriptivo'
+  },
+  company_id: {
+    type:      DataTypes.UUID,
+    allowNull: true,
+    comment:   'Empresa propietaria de esta integración'
   }
 }, {
   indexes: [
     { fields: ['provider'] },
-    { fields: ['is_active'] }
+    { fields: ['is_active'] },
   ]
 });
 

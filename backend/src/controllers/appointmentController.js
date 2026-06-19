@@ -1,5 +1,45 @@
 const { Appointment, BusinessSchedule, User } = require('../models');
-const { Op } = require('sequelize');
+const Company  = require('../models/Company');
+const outlook  = require('../services/outlookService');
+const gcal     = require('../services/googleCalendarService');
+const logger   = require('../config/logger');
+const { Op }   = require('sequelize');
+
+async function syncToOutlook(companyId, appointment, action = 'create') {
+  try {
+    const company = await Company.findByPk(companyId, { attributes: ['id', 'outlook_tokens'] });
+    if (!company?.outlook_tokens?.access_token) return;
+
+    if (action === 'create') {
+      const eventId = await outlook.createCalendarEvent(company, appointment);
+      if (eventId) await appointment.update({ outlook_event_id: eventId });
+    } else if (action === 'update') {
+      await outlook.updateCalendarEvent(company, appointment.outlook_event_id, appointment);
+    } else if (action === 'delete') {
+      await outlook.deleteCalendarEvent(company, appointment.outlook_event_id);
+    }
+  } catch (err) {
+    logger.warn(`⚠️  Outlook sync (${action}) falló:`, err.message);
+  }
+}
+
+async function syncToGoogle(companyId, appointment, action = 'create') {
+  try {
+    const company = await Company.findByPk(companyId, { attributes: ['id', 'google_calendar_tokens'] });
+    if (!company?.google_calendar_tokens?.access_token) return;
+
+    if (action === 'create') {
+      const eventId = await gcal.createCalendarEvent(company, appointment);
+      if (eventId) await appointment.update({ google_event_id: eventId });
+    } else if (action === 'update') {
+      await gcal.updateCalendarEvent(company, appointment.google_event_id, appointment);
+    } else if (action === 'delete') {
+      await gcal.deleteCalendarEvent(company, appointment.google_event_id);
+    }
+  } catch (err) {
+    logger.warn(`⚠️  Google Calendar sync (${action}) falló:`, err.message);
+  }
+}
 
 function timeToMin(t) {
   const [h, m] = t.split(':').map(Number);
@@ -60,6 +100,11 @@ const create = async (req, res) => {
       assigned_to:      assigned_to || null,
       created_by:       req.user?.id || null,
     });
+
+    if (req.user?.company_id) {
+      syncToOutlook(req.user.company_id, appt, 'create');
+      syncToGoogle(req.user.company_id, appt, 'create');
+    }
     res.json({ success: true, data: appt });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -80,6 +125,10 @@ const update = async (req, res) => {
       if (req.body[f] !== undefined) updates[f] = req.body[f];
     }
     await appt.update(updates);
+    if (req.user?.company_id) {
+      syncToOutlook(req.user.company_id, appt, 'update');
+      syncToGoogle(req.user.company_id, appt, 'update');
+    }
     res.json({ success: true, data: appt });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -93,6 +142,10 @@ const remove = async (req, res) => {
     const where = { id: req.params.id, ...(companyId ? { company_id: companyId } : {}) };
     const appt = await Appointment.findOne({ where });
     if (!appt) return res.status(404).json({ success: false, message: 'Cita no encontrada' });
+    if (req.user?.company_id) {
+      syncToOutlook(req.user.company_id, appt, 'delete');
+      syncToGoogle(req.user.company_id, appt, 'delete');
+    }
     await appt.destroy();
     res.json({ success: true });
   } catch (err) {

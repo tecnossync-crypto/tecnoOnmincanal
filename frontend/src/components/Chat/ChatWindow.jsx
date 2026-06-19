@@ -7,10 +7,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Zap, X, ClipboardList, FileText } from 'lucide-react';
+import { Zap, X, ClipboardList } from 'lucide-react';
 import { useConversationStore, useAuthStore, useThemeStore, useModuleStore } from '../../store';
 import ModuleRecordModal from '../Modules/ModuleRecordModal';
-import MessageTemplatePicker from '../MergeTemplates/MessageTemplatePicker';
 import { joinConversation, leaveConversation } from '../../services/socket';
 import api  from '../../services/api';
 import toast from 'react-hot-toast';
@@ -37,9 +36,7 @@ export default function ChatWindow() {
   const [quickSearch,     setQuickSearch]     = useState('');
   const [showModulePicker,setShowModulePicker]   = useState(false);
   const [moduleModal,     setModuleModal]       = useState(null);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { modules } = useModuleStore();
-  const { hasFeature } = useAuthStore();
 
   const messagesEndRef = useRef(null);
   const inputRef       = useRef(null);
@@ -362,18 +359,6 @@ export default function ChatWindow() {
             <Zap size={16} />
           </button>
 
-          {/* Botón plantillas de mensaje */}
-          {hasFeature('merge_templates') && (
-            <button
-              type="button"
-              onClick={() => setShowTemplatePicker(true)}
-              className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-white dark:bg-[#2a3942] text-[#667781] hover:text-indigo-500 hover:bg-indigo-50"
-              title="Plantillas de mensaje"
-            >
-              <FileText size={16} />
-            </button>
-          )}
-
           {/* Botón módulos */}
           {modules.length > 0 && (
             <div className="relative flex-shrink-0">
@@ -464,13 +449,6 @@ export default function ChatWindow() {
         contactName={activeConversation?.contact?.name || ''}
         conversationId={activeConversation?.id}
       />
-      {showTemplatePicker && (
-        <MessageTemplatePicker
-          conversationId={activeConversation?.id}
-          onInsert={(msg) => setText(msg)}
-          onClose={() => setShowTemplatePicker(false)}
-        />
-      )}
     </div>
   );
 }

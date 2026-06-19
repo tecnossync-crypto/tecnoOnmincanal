@@ -74,7 +74,7 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const mod = await CustomModule.findByPk(req.params.id);
+    const mod = await CustomModule.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!mod) return res.status(404).json({ success: false, message: 'Módulo no encontrado' });
     const { name, icon, color, description, fields_schema, daily_limit, sort_order, is_active } = req.body;
     await mod.update({
@@ -95,7 +95,7 @@ const update = async (req, res) => {
 
 const remove = async (req, res) => {
   try {
-    const mod = await CustomModule.findByPk(req.params.id);
+    const mod = await CustomModule.findOne({ where: { id: req.params.id, ...companyFilter(req) } });
     if (!mod) return res.status(404).json({ success: false, message: 'Módulo no encontrado' });
     await mod.destroy();
     res.json({ success: true });

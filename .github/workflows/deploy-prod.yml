@@ -1,0 +1,105 @@
+name: Deploy → Producción
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Escribe PRODUCCION para confirmar'
+        required: true
+      reason:
+        description: 'Motivo del deploy'
+        required: true
+
+env:
+  IMAGE_BACKEND: ${{ secrets.ECR_REGISTRY }}/tecnossync-backend
+  IMAGE_FRONTEND: ${{ secrets.ECR_REGISTRY }}/tecnossync-frontend
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  validate-confirm:
+    name: Validar confirmación
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar palabra de confirmación
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "PRODUCCION" ]; then
+            echo "❌ Debes escribir PRODUCCION para confirmar el deploy"
+            exit 1
+          fi
+
+  deploy-prod:
+    name: Build & Deploy a Producción
+    runs-on: ubuntu-latest
+    needs: validate-confirm
+    environment: production
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Backend
+        run: |
+          docker build \
+            -t $IMAGE_BACKEND:prod-${{ github.sha }} \
+            -t $IMAGE_BACKEND:prod \
+            -t $IMAGE_BACKEND:latest \
+            ./backend
+          docker push $IMAGE_BACKEND:prod-${{ github.sha }}
+          docker push $IMAGE_BACKEND:prod
+          docker push $IMAGE_BACKEND:latest
+
+      - name: Build & Push Frontend
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=/api \
+            -t $IMAGE_FRONTEND:prod-${{ github.sha }} \
+            -t $IMAGE_FRONTEND:prod \
+            -t $IMAGE_FRONTEND:latest \
+            ./frontend
+          docker push $IMAGE_FRONTEND:prod-${{ github.sha }}
+          docker push $IMAGE_FRONTEND:prod
+          docker push $IMAGE_FRONTEND:latest
+
+      - name: Deploy a Producción (zero-downtime)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/tecnossync
+            export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
+            export IMAGE_TAG=prod-${{ github.sha }}
+
+            # Pull nuevas imágenes
+            docker compose -f docker-compose.prod.yml pull
+
+            # Restart con zero-downtime (backend primero, luego frontend)
+            docker compose -f docker-compose.prod.yml up -d --no-deps backend
+            sleep 15
+            docker compose -f docker-compose.prod.yml up -d --no-deps frontend
+            docker system prune -f
+
+      - name: Health check Producción
+        run: |
+          sleep 25
+          curl -f https://${{ secrets.PROD_DOMAIN }}/api/health || exit 1
+
+      - name: Tag release en Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "release-$(date +%Y%m%d-%H%M)" -m "${{ github.event.inputs.reason }}"
+          git push --tags

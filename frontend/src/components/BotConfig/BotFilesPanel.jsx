@@ -14,7 +14,7 @@ function getFileIcon(mime) {
   return <Paperclip size={18} className="text-slate-400" />;
 }
 
-const BACKEND = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
+const BACKEND = import.meta.env.VITE_API_URL?.replace('/api', '') || window.location.origin;
 
 export default function BotFilesPanel() {
   const [files,       setFiles]       = useState([]);

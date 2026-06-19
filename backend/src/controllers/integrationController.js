@@ -3,12 +3,14 @@ const { Integration } = require('../models');
 const chatbotService  = require('../services/chatbotService');
 const logger          = require('../config/logger');
 
+const cf = (req) =>
+  req.companyFilter || (req.user?.role === 'superadmin' ? {} : { company_id: req.user?.company_id });
+
 class IntegrationController {
 
   async getAll(req, res) {
     try {
-      const integrations = await Integration.findAll({ order: [['created_at', 'DESC']] });
-      // Ocultar API keys parcialmente
+      const integrations = await Integration.findAll({ where: cf(req), order: [['created_at', 'DESC']] });
       const safe = integrations.map(i => ({
         ...i.toJSON(),
         api_key: i.api_key ? `${i.api_key.slice(0, 6)}${'•'.repeat(20)}` : ''
@@ -25,9 +27,11 @@ class IntegrationController {
       if (!provider || !api_key)
         return res.status(400).json({ success: false, message: 'provider y api_key son requeridos' });
 
-      // Desactivar otros si este será el activo
-      await Integration.update({ is_active: false }, { where: {} });
-      const integration = await Integration.create({ provider, api_key, label, is_active: true });
+      const company_id = req.user?.role === 'superadmin' ? (req.body.company_id || null) : req.user?.company_id;
+
+      // Desactivar otros de la misma empresa
+      await Integration.update({ is_active: false }, { where: cf(req) });
+      const integration = await Integration.create({ provider, api_key, label, is_active: true, company_id });
       logger.info(`✅ Integración creada: ${provider}`);
       res.status(201).json({ success: true, data: { ...integration.toJSON(), api_key: `${api_key.slice(0,6)}${'•'.repeat(20)}` } });
     } catch (err) {
@@ -37,8 +41,8 @@ class IntegrationController {
 
   async setActive(req, res) {
     try {
-      await Integration.update({ is_active: false }, { where: {} });
-      const integration = await Integration.findByPk(req.params.id);
+      await Integration.update({ is_active: false }, { where: cf(req) });
+      const integration = await Integration.findOne({ where: { id: req.params.id, ...cf(req) } });
       if (!integration) return res.status(404).json({ success: false, message: 'No encontrada' });
       await integration.update({ is_active: true });
       res.json({ success: true, data: integration });
@@ -49,7 +53,7 @@ class IntegrationController {
 
   async remove(req, res) {
     try {
-      const integration = await Integration.findByPk(req.params.id);
+      const integration = await Integration.findOne({ where: { id: req.params.id, ...cf(req) } });
       if (!integration) return res.status(404).json({ success: false, message: 'No encontrada' });
       await integration.destroy();
       res.json({ success: true });
@@ -76,7 +80,7 @@ class IntegrationController {
 
   async getActive(req, res) {
     try {
-      const integration = await Integration.findOne({ where: { is_active: true } });
+      const integration = await Integration.findOne({ where: { is_active: true, ...cf(req) } });
       if (!integration) return res.json({ success: true, data: null });
       res.json({ success: true, data: { ...integration.toJSON(), api_key: undefined } });
     } catch (err) {
